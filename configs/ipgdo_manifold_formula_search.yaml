@@ -1,0 +1,126 @@
+schema_version: 1
+
+# ==================== 路径设置 ====================
+paths:
+  # 正式实验配置只读取，不会被参数搜索脚本覆盖。
+  experiment_config: "experiment.yaml"
+  # 第四轮参数搜索、状态、排名、图片和冠军结果的独立目录。
+  output_dir: "outputs/ipgdo_manifold_formula_search"
+  validation_output_dir: "outputs/ipgdo_manifold_formula_search/validation_runs"
+  # 冠军确定后自动执行的10种子完整CPDP结果目录。
+  final_cpdp_output_dir: "outputs/ipgdo_manifold_formula_search/final_cpdp_runs"
+  runner_script: "run_oversampling_validation.py"
+
+# ==================== 方法设置 ====================
+method:
+  oversampling_method: "ipgdo_kan_jepa"
+  oversampling_profile: "full"
+  generated_profile_name: "search"
+  final_cpdp_profile_name: "final_cpdp"
+  variant_name: "full"
+  variant_kind: "current"
+
+# ==================== 当前最佳基线 ====================
+# 下面三个值是本轮搜索起点，也必须分别出现在候选列表中。
+initial_values:
+  manifold_interval:
+    lower_quantile: 0.025
+    upper_quantile: 0.975
+  manifold_neighbors: 5
+  formula_max_terms: 10
+
+# ==================== 参数候选范围 ====================
+parameter_grids:
+  # lower/upper作为一个成对参数共同变化，避免产生无意义或不合法组合。
+  manifold_intervals:
+    - {lower_quantile: 0.01, upper_quantile: 0.99}
+    - {lower_quantile: 0.025, upper_quantile: 0.975}
+    - {lower_quantile: 0.05, upper_quantile: 0.95}
+    - {lower_quantile: 0.10, upper_quantile: 0.90}
+    - {lower_quantile: 0.15, upper_quantile: 0.85}
+  # 实际邻居数会自动受项目真实缺陷样本数量限制。
+  manifold_neighbors: [3, 5, 7, 9, 11]
+  # 控制隐式物理公式最多保留的非零项数。
+  formula_max_terms: [4, 6, 8, 10, 12]
+
+# ==================== 随机种子 ====================
+# 候选先使用5个种子筛选，最终冠军补充到10个Source-CV种子。
+seeds:
+  screening:
+    - 2026072201
+    - 2026072202
+    - 2026072203
+    - 2026072204
+    - 2026072205
+  confirmation:
+    - 2026072206
+    - 2026072207
+    - 2026072208
+    - 2026072209
+    - 2026072210
+
+# ==================== 前三轮确定的最佳参数 ====================
+# 本轮只改变流形区间、邻居数和公式项数，以下参数始终固定。
+fixed_overrides:
+  target_minority_ratio: 0.6
+  candidate_multiplier: 3.5
+  formula:
+    minimum_reliability: 0.0
+    use_reliability_weighting: false
+  diffusion:
+    physics_warmup_fraction: 0.2
+    formula_consistency_weight: 0.0
+    formula_semantic_weight: 0.05
+    defect_anchor_start_fraction: 0.5
+    guidance_scale: 1.5
+    physics_timestep_fraction: 0.4
+    condition_dropout: 0.1
+
+# ==================== 统一验证环境 ====================
+validation:
+  source_cv:
+    folds: 3
+    validation_fraction: 0.20
+  classifier:
+    kind: "logistic_regression"
+    c: 1.0
+    max_iter: 2000
+    class_weight: null
+  quality:
+    max_samples: 1000
+    knn_neighbors: 5
+    near_duplicate_quantile: 0.05
+    # 质量评价阈值固定不变，避免评价标准随待搜索参数一起变化。
+    manifold_lower_quantile: 0.05
+    manifold_upper_quantile: 0.95
+    coverage_quantile: 0.95
+    exact_tolerance: 0.0000000001
+
+# ==================== 最优参数判定规则 ====================
+selection:
+  metrics: [auc, auprc, mcc, f1, gmean, popt20]
+  top_values_per_stage: 2
+  maximum_allowed_decline:
+    auc: 0.005
+    auprc: 0.005
+    popt20: 0.01
+
+# ==================== 冠军完整CPDP复验 ====================
+final_cpdp:
+  enabled: true
+  # 自动使用上面的5个筛选种子和5个确认种子，共10个种子。
+  use_all_search_seeds: true
+  validation_fraction: 0.20
+
+# ==================== 执行与弹性GPU调度 ====================
+execution:
+  workers: 4
+  fail_fast: true
+  elastic_gpu:
+    enabled: true
+    launch_utilization_limit: 75
+    minimum_free_memory_mb: 2048
+    maximum_temperature_c: 80
+    poll_seconds: 2
+    ramp_up_seconds: 8
+    pause_process_names: []

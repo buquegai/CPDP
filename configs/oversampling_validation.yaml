@@ -1,0 +1,94 @@
+schema_version: 1
+
+# This file is independent from the formal experiment configuration.
+experiment_config: "experiment.yaml"
+output_dir: "outputs/oversampling_validation"
+
+# The validation runner reads only the current oversampling section from this method.
+# Future edits to that section and its source code automatically change the fingerprint.
+oversampling_method: "ipgdo_kan_jepa"
+
+variants:
+  none:
+    kind: "none"
+  random:
+    # 固定历史对照设置，避免被 IPGDO 的最优参数连带修改。
+    kind: "random"
+    overrides:
+      target_minority_ratio: 1.0
+  smote:
+    # 固定历史对照设置，SMOTE 不使用候选冗余生成倍数。
+    kind: "smote"
+    overrides:
+      target_minority_ratio: 1.0
+      smote_k_neighbors: 5
+  tabddpm:
+    # 纯表格扩散基线：使用与IPGDO一致的扩散核心，但不进行KNN筛选。
+    kind: "tabddpm"
+    overrides:
+      target_minority_ratio: 1.0
+  full:
+    # 当前IPGDO：表格扩散生成，并在训练阶段加入隐式公式物理约束。
+    kind: "current"
+    overrides:
+      target_minority_ratio: 1.0
+      diffusion:
+        hidden_dim: 256
+        residual_blocks: 4
+        timesteps: 200
+        epochs: 300
+        learning_rate: 0.001
+
+profiles:
+  smoke:
+    oversampling_profile: "smoke"
+    seeds: [2026072201]
+    # 本文IPGDO已有正式结果，本轮只运行前四组对照。
+    variants: [none, random, smote, tabddpm]
+    source_cv:
+      # 正式预测器是目标域参与对齐的传导式模型，本轮只执行CPDP目标项目协议。
+      enabled: false
+      folds: 3
+      validation_fraction: 0.20
+    cpdp:
+      enabled: true
+      validation_fraction: 0.20
+    classifier:
+      # 直接复用experiment.yaml中smoke/ipgdo_kan_jepa的正式预测模块。
+      kind: "formal_kan_jepa_tabr"
+      method: "ipgdo_kan_jepa"
+    quality:
+      max_samples: 200
+      knn_neighbors: 3
+      near_duplicate_quantile: 0.05
+      manifold_lower_quantile: 0.05
+      manifold_upper_quantile: 0.95
+      coverage_quantile: 0.95
+      exact_tolerance: 0.0000000001
+
+  full:
+    oversampling_profile: "full"
+    # 复用 configs/experiment.yaml 当前配置的全部预测模型种子。
+    seeds: "experiment"
+    # 本文IPGDO已有正式结果，本轮只运行前四组对照。
+    variants: [none, random, smote, tabddpm]
+    source_cv:
+      # 正式预测器是目标域参与对齐的传导式模型，本轮只执行CPDP目标项目协议。
+      enabled: false
+      folds: 3
+      validation_fraction: 0.20
+    cpdp:
+      enabled: true
+      validation_fraction: 0.20
+    classifier:
+      # 直接复用experiment.yaml中full/ipgdo_kan_jepa的正式KAN-JEPA + TabR。
+      kind: "formal_kan_jepa_tabr"
+      method: "ipgdo_kan_jepa"
+    quality:
+      max_samples: 1000
+      knn_neighbors: 5
+      near_duplicate_quantile: 0.05
+      manifold_lower_quantile: 0.05
+      manifold_upper_quantile: 0.95
+      coverage_quantile: 0.95
+      exact_tolerance: 0.0000000001

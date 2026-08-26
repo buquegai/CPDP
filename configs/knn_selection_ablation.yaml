@@ -1,0 +1,36 @@
+schema_version: 1
+
+# 严格配对实验：三种方案共享同一次DDPM训练和同一批候选样本。
+experiment_config: "experiment.yaml"
+output_dir: "outputs/knn_selection_ablation"
+profile: "full"
+method: "ipgdo_kan_jepa"
+
+# 使用正式实验的10个预测种子和全部25个目标项目。
+seeds: "experiment"
+targets: "all"
+
+# 这些值覆盖正式配置中的同名项，确保本轮消融定义固定且可审计。
+oversampling:
+  device: "auto"
+  target_minority_ratio: 1.0
+  candidate_batch_multiplier: 2.0
+  max_generation_rounds: 100
+  diffusion:
+    hidden_dim: 256
+    residual_blocks: 4
+    dropout: 0.1
+    timesteps: 200
+    schedule: "cosine"
+    epochs: 300
+    batch_size: 256
+    learning_rate: 0.001
+    weight_decay: 0.00001
+    gradient_clip_norm: 1.0
+    sample_batch_size: 1024
+    use_amp: true
+    normalized_clip: 8.0
+  knn:
+    neighbors: 5
+    lower_quantile: 0.10
+    upper_quantile: 0.90

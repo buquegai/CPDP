@@ -1,0 +1,40 @@
+schema_version: 1
+
+paths:
+  experiment_config: "experiment.yaml"
+  output_dir: "../outputs/ipgdo_seed_search"
+
+search:
+  method: "ipgdo_kan_jepa"
+  profile: "full"
+  # 从该整数开始连续生成候选过采样种子。
+  candidate_seed_start: 2026072201
+  # 当前搜索100个种子；总搜索耗时与该数量近似线性增长。
+  candidate_seed_count: 100
+
+source_cv:
+  folds: 3
+  validation_fraction: 0.20
+  # 以下随机种子在所有候选之间固定，只允许IPGDO候选种子发生变化。
+  split_seed: 2026081201
+  classifier_seed: 2026081202
+  quality_seed: 2026081203
+
+selection:
+  # 六项指标先在源项目内部跨折取均值，再按“源项目×指标”进行平均排名。
+  metrics: [auc, auprc, mcc, f1, gmean, popt20]
+
+classifier:
+  kind: "logistic_regression"
+  c: 1.0
+  max_iter: 2000
+  class_weight: null
+
+quality:
+  max_samples: 1000
+  knn_neighbors: 5
+  near_duplicate_quantile: 0.05
+  manifold_lower_quantile: 0.05
+  manifold_upper_quantile: 0.95
+  coverage_quantile: 0.95
+  exact_tolerance: 0.0000000001

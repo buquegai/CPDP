@@ -1,0 +1,24 @@
+schema_version: 1
+
+paths:
+  experiment_config: "experiment.yaml"
+  # Independent output directory. The formal seed map is not overwritten.
+  output_dir: "../outputs/ipgdo_oracle_seed_search"
+
+search:
+  method: "ipgdo_kan_jepa"
+  profile: "full"
+  # Search 100 consecutive IPGDO seeds for every real CPDP target project.
+  candidate_seed_start: 2026072201
+  candidate_seed_count: 100
+  # Keep KAN-JEPA randomness identical across all IPGDO candidates.
+  predictor_seed: 2026081601
+
+selection:
+  # The winner has the lowest equal-weight mean rank across these six metrics.
+  metrics: [auc, auprc, mcc, f1, gmean, popt20]
+
+storage:
+  # False keeps only the winning augmentation cache after each target finishes.
+  # Per-seed metrics and rankings are always retained for audit and resume.
+  retain_candidate_caches: false

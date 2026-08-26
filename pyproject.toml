@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cpdp-experiments"
+version = "0.1.0"
+description = "Auditable unified experiments for cross-project defect prediction"
+requires-python = ">=3.9,<3.13"
+dependencies = [
+    "imbalanced-learn>=0.12,<0.14",
+    "numpy>=1.26,<2.0",
+    "pandas>=2.1,<2.3",
+    "PyYAML>=6.0,<7.0",
+    "scikit-learn>=1.4,<1.7",
+    "scipy>=1.11,<1.14",
+    "threadpoolctl>=3.1,<4.0",
+]
+
+[project.optional-dependencies]
+deep = ["torch>=2.2,<2.7"]
+dev = ["pytest>=8.0,<9.0"]
+plot = ["matplotlib>=3.8,<4.0"]
+
+[project.scripts]
+cpdp = "cpdp.cli:main"
+cpdp-launcher = "cpdp.launcher:main"
+cpdp-validate-oversampling = "cpdp.oversampling_validation.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -m 'not integration'"
+markers = [
+    "integration: runs real datasets and original third-party method code",
+]

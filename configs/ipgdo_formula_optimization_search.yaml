@@ -1,0 +1,125 @@
+schema_version: 1
+
+# ==================== 路径设置 ====================
+paths:
+  # 正式实验配置只读取，不会被参数搜索脚本覆盖。
+  experiment_config: "experiment.yaml"
+  # 第五轮搜索、断点状态、排名、图片和冠军结果使用独立目录。
+  output_dir: "outputs/ipgdo_formula_optimization_search"
+  validation_output_dir: "outputs/ipgdo_formula_optimization_search/validation_runs"
+  # 冠军确定后自动执行的10种子完整CPDP结果目录。
+  final_cpdp_output_dir: "outputs/ipgdo_formula_optimization_search/final_cpdp_runs"
+  runner_script: "run_oversampling_validation.py"
+
+# ==================== 方法设置 ====================
+method:
+  oversampling_method: "ipgdo_kan_jepa"
+  oversampling_profile: "full"
+  generated_profile_name: "search"
+  final_cpdp_profile_name: "final_cpdp"
+  variant_name: "full"
+  variant_kind: "current"
+
+# ==================== 当前最佳基线 ====================
+# 下面三个值是第五轮搜索起点，也必须分别出现在候选列表中。
+initial_values:
+  formula_l1_c: 0.1
+  diffusion_learning_rate: 0.0005
+  diffusion_epochs: 300
+
+# ==================== 第五轮参数候选范围 ====================
+# 如需调整搜索范围，只修改这里；每个列表必须包含上面的对应起点。
+parameter_grids:
+  # 该值是L1逻辑回归的C：越小正则越强、公式越稀疏；越大正则越弱。
+  formula_l1_c: [0.025, 0.05, 0.1, 0.2, 0.5]
+  # 扩散网络AdamW优化器的初始学习率。
+  diffusion_learning_rate: [0.0001, 0.00025, 0.0005, 0.00075, 0.001]
+  # 每个项目训练扩散网络的最大轮数；数值越大通常耗时越长。
+  diffusion_epochs: [150, 225, 300, 400, 500]
+
+# ==================== 随机种子 ====================
+# 候选先使用5个种子筛选，最终冠军补充到10个Source-CV种子。
+seeds:
+  screening:
+    - 2026072201
+    - 2026072202
+    - 2026072203
+    - 2026072204
+    - 2026072205
+  confirmation:
+    - 2026072206
+    - 2026072207
+    - 2026072208
+    - 2026072209
+    - 2026072210
+
+# ==================== 前四轮确定的最佳参数 ====================
+# 本轮只改变formula.l1_c、diffusion.learning_rate和diffusion.epochs。
+fixed_overrides:
+  target_minority_ratio: 0.6
+  candidate_multiplier: 3.5
+  formula:
+    max_terms: 10
+    minimum_reliability: 0.0
+    use_reliability_weighting: false
+  diffusion:
+    physics_warmup_fraction: 0.2
+    formula_consistency_weight: 0.0
+    formula_semantic_weight: 0.05
+    defect_anchor_start_fraction: 0.5
+    guidance_scale: 1.5
+    physics_timestep_fraction: 0.4
+    condition_dropout: 0.1
+  manifold:
+    lower_quantile: 0.025
+    upper_quantile: 0.975
+    neighbors: 5
+
+# ==================== 统一验证环境 ====================
+validation:
+  source_cv:
+    folds: 3
+    validation_fraction: 0.20
+  classifier:
+    kind: "logistic_regression"
+    c: 1.0
+    max_iter: 2000
+    class_weight: null
+  quality:
+    max_samples: 1000
+    knn_neighbors: 5
+    near_duplicate_quantile: 0.05
+    # 评价标准必须固定，不能随待搜索的模型参数变化。
+    manifold_lower_quantile: 0.05
+    manifold_upper_quantile: 0.95
+    coverage_quantile: 0.95
+    exact_tolerance: 0.0000000001
+
+# ==================== 最优参数判定规则 ====================
+selection:
+  metrics: [auc, auprc, mcc, f1, gmean, popt20]
+  top_values_per_stage: 2
+  maximum_allowed_decline:
+    auc: 0.005
+    auprc: 0.005
+    popt20: 0.01
+
+# ==================== 冠军完整CPDP复验 ====================
+final_cpdp:
+  enabled: true
+  # 自动使用上面的5个筛选种子和5个确认种子，共10个种子。
+  use_all_search_seeds: true
+  validation_fraction: 0.20
+
+# ==================== 执行与弹性GPU调度 ====================
+execution:
+  workers: 4
+  fail_fast: true
+  elastic_gpu:
+    enabled: true
+    launch_utilization_limit: 75
+    minimum_free_memory_mb: 2048
+    maximum_temperature_c: 80
+    poll_seconds: 2
+    ramp_up_seconds: 8
+    pause_process_names: []

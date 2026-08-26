@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+outputs/
+fed_cpdp_outputs_v3/
+*.egg-info/
+backups/
+data/
+.idea/
+*.tar
+*.tar.gz
+*.rar
+configs/server_runtime_*.yaml*
+
+# Official replication packages are kept locally and tracked by provenance hashes.
+**/*.zip

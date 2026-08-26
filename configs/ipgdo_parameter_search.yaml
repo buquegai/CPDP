@@ -1,0 +1,122 @@
+schema_version: 1
+
+# ==================== 路径设置 ====================
+# 这些路径默认相对于项目根目录 D:/PythonCode/CPDP 解析。
+paths:
+  # 基础实验配置只会被读取，搜索脚本不会修改它。
+  experiment_config: "experiment.yaml"
+  # 排名、搜索状态、最优参数和自动生成的试验配置保存在这里。
+  output_dir: "outputs/ipgdo_ratio_timestep_condition_search"
+  # 每个参数组合的原始逐项目结果保存在这里。
+  validation_output_dir: "outputs/ipgdo_ratio_timestep_condition_search/validation_runs"
+  runner_script: "run_oversampling_validation.py"
+
+# ==================== 方法设置 ====================
+method:
+  oversampling_method: "ipgdo_kan_jepa"
+  oversampling_profile: "full"
+  generated_profile_name: "search"
+  variant_name: "full"
+  variant_kind: "current"
+
+# ==================== 搜索起点 ====================
+# 第一阶段只改变 target_minority_ratio，其余两个参数固定为这里的值。
+# 后续阶段会依次固定前一阶段的最优值，再搜索下一个参数。
+initial_values:
+  # 使用当前冠军作为后续复查起点；这些值必须同时包含在下面各自的候选列表中。
+  target_minority_ratio: 0.6
+  physics_timestep_fraction: 0.4
+  condition_dropout: 0.1
+
+# ==================== 三个参数的候选范围 ====================
+# 可以直接修改列表，但 initial_values 中的对应值必须包含在列表中。
+parameter_grids:
+  # 最终缺陷样本数/正常样本数；越大生成样本越多，但噪声累积和分布偏移风险也越高。
+  target_minority_ratio: [0.15, 0.25, 0.4, 0.6, 0.8]
+  # 物理损失参与训练的扩散时间步范围；越大越会约束高噪声时间步。
+  physics_timestep_fraction: [0.25, 0.4, 0.5, 0.65, 0.8]
+  # 训练时丢弃类别和项目条件的概率；越大无条件分支越强，但条件学习样本越少。
+  condition_dropout: [0.05, 0.1, 0.15, 0.2, 0.3]
+
+# ==================== 随机种子 ====================
+# 所有候选先使用前5个种子；最终第一名只补跑后5个种子，总计10个。
+seeds:
+  screening:
+    - 2026072201
+    - 2026072202
+    - 2026072203
+    - 2026072204
+    - 2026072205
+  confirmation:
+    - 2026072206
+    - 2026072207
+    - 2026072208
+    - 2026072209
+    - 2026072210
+
+# ==================== 搜索期间固定不变的IPGDO机制 ====================
+# 以下参数由前两轮搜索或消融实验确定，本轮保持不变。
+fixed_overrides:
+  candidate_multiplier: 3.5
+  formula:
+    max_terms: 10
+    minimum_reliability: 0.0
+    use_reliability_weighting: false
+  diffusion:
+    physics_warmup_fraction: 0.2
+    formula_semantic_weight: 0.05
+    defect_anchor_start_fraction: 0.5
+    guidance_scale: 1.5
+    formula_consistency_weight: 0.0
+  manifold:
+    lower_quantile: 0.025
+    upper_quantile: 0.975
+    neighbors: 5
+
+# ==================== 统一验证环境 ====================
+validation:
+  # 参数选择只使用源项目内部交叉验证，不读取正式CPDP目标项目结果。
+  source_cv:
+    folds: 3
+    validation_fraction: 0.20
+  classifier:
+    kind: "logistic_regression"
+    c: 1.0
+    max_iter: 2000
+    class_weight: null
+  quality:
+    max_samples: 1000
+    knn_neighbors: 5
+    near_duplicate_quantile: 0.05
+    manifold_lower_quantile: 0.05
+    manifold_upper_quantile: 0.95
+    coverage_quantile: 0.95
+    exact_tolerance: 0.0000000001
+
+# ==================== 最优参数判定规则 ====================
+selection:
+  # 每个源项目、每个指标内对候选配置降序排名，再计算跨项目平均排名。
+  metrics: [auc, auprc, mcc, f1, gmean, popt20]
+  # 每一阶段保留前2名，最后执行2×2×2局部组合检查；请保持为2。
+  top_values_per_stage: 2
+  # 相对初始参数组合的source_cv宏平均最大允许下降幅度。
+  maximum_allowed_decline:
+    auc: 0.005
+    auprc: 0.005
+    popt20: 0.01
+
+# ==================== 执行与弹性GPU调度 ====================
+execution:
+  # 最大并发任务数；实际并发数会根据GPU状态在1到该值之间动态变化。
+  workers: 4
+  # 某个source_cv任务失败时停止当前组合，修复后再次启动即可断点续跑。
+  fail_fast: true
+  elastic_gpu:
+    enabled: true
+    launch_utilization_limit: 75
+    minimum_free_memory_mb: 2048
+    maximum_temperature_c: 80
+    poll_seconds: 2
+    ramp_up_seconds: 8
+    # 例如 ["game.exe"]；检测到这些进程时暂停派发新任务，已启动任务继续运行。
+    pause_process_names: []

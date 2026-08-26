@@ -1,0 +1,8 @@
+Package: IPGDO Network Capacity Parameter Search
+Build date: 2026-08-09
+Platform: Linux, Python 3.9-3.12
+Dataset protocol: 4 families, 25 target projects
+Search protocol: 5 screening seeds + 5 confirmation seeds, 3-fold Source-CV
+Final validation: 25 targets x 10 seeds CPDP
+Historical outputs included: no
+Virtual environment included: no
