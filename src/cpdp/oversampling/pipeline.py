@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict
-from typing import Any, Dict, List, Mapping, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -184,6 +184,80 @@ class IPGDOOversampler:
                 ),
             },
         )
+
+    def fit_training_only(
+        self,
+        sources: Sequence[LabeledProject],
+        seed: int,
+        *,
+        loss_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ) -> Dict[str, Any]:
+        """Train the IPGDO diffusion stage without sampling or prediction."""
+        projects = tuple(sources)
+        self._validate_sources(projects)
+        requested = tuple(self._requested_count(project) for project in projects)
+        if sum(requested) == 0:
+            return {
+                "status": "skipped_no_generation_needed",
+                "training_data": "real_source_defects_only",
+                "requested_synthetic": 0,
+                "formula_guidance": {"enabled": False, "reason": "not_needed"},
+            }
+
+        all_values = np.vstack([project.features.values for project in projects])
+        all_labels = np.concatenate([project.labels for project in projects])
+        formula_guidance, formula_metadata = self._fit_formula_guidance(
+            projects, all_values, all_labels
+        )
+        defect_batches = tuple(
+            project.features.values[project.labels == 1] for project in projects
+        )
+        project_scalers = tuple(
+            RobustAffineScaler.fit(defects) for defects in defect_batches
+        )
+        normalized_defects = np.vstack(
+            [
+                np.clip(
+                    scaler.transform(defects),
+                    -self.config.diffusion.normalized_clip,
+                    self.config.diffusion.normalized_clip,
+                )
+                for defects, scaler in zip(defect_batches, project_scalers)
+            ]
+        ).astype(np.float32)
+        raw_defects = np.vstack(defect_batches).astype(np.float32)
+        defect_project_ids = np.concatenate(
+            [
+                np.full(len(defects), index, dtype=np.int64)
+                for index, defects in enumerate(defect_batches)
+            ]
+        )
+        scaler_centers = np.vstack([scaler.center for scaler in project_scalers])
+        scaler_scales = np.vstack([scaler.scale for scaler in project_scalers])
+        diffusion = ProjectConditionedTabularDDPM(
+            input_dim=normalized_defects.shape[1],
+            project_count=len(projects),
+            config=self.config.diffusion,
+            device=self.config.device,
+        )
+        diffusion_metadata = diffusion.fit(
+            normalized_defects,
+            defect_project_ids,
+            seed,
+            raw_defects=raw_defects,
+            scaler_centers=scaler_centers,
+            scaler_scales=scaler_scales,
+            formula_guidance=formula_guidance,
+            loss_callback=loss_callback,
+        )
+        return {
+            "status": "success",
+            "training_data": "real_source_defects_only",
+            "source_projects": [project.key for project in projects],
+            "requested_synthetic": int(sum(requested)),
+            "formula_guidance": formula_metadata,
+            "diffusion": diffusion_metadata,
+        }
 
     def _fit_formula_guidance(
         self,

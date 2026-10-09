@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import math
+import os
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
@@ -19,8 +23,47 @@ from cpdp.predictors.kan import (
     update_ema_target,
 )
 from cpdp.predictors.tabr import TabRClassifierConfig
-from cpdp.predictors.threshold import select_mcc_threshold
+from cpdp.predictors.threshold import select_metric_threshold
 from cpdp.types import LabeledProject, PredictionResult, UnlabeledProject
+
+
+_BATCH_LOSS_LOG_ENV = "CPDP_PREDICTOR_BATCH_LOSS_LOG"
+_batch_loss_log_path: Optional[Path] = None
+_batch_loss_log_handle = None
+
+
+def _record_batch_losses(record: Mapping[str, Any]) -> None:
+    global _batch_loss_log_handle, _batch_loss_log_path
+    raw_path = os.environ.get(_BATCH_LOSS_LOG_ENV, "").strip()
+    if not raw_path:
+        return
+    path = Path(raw_path).expanduser().resolve()
+    if path != _batch_loss_log_path or not path.exists():
+        if _batch_loss_log_handle is not None:
+            _batch_loss_log_handle.close()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _batch_loss_log_handle = path.open(
+            "w", encoding="utf-8", newline="\n", buffering=1024 * 1024
+        )
+        _batch_loss_log_path = path
+    _batch_loss_log_handle.write(
+        json.dumps(dict(record), ensure_ascii=False, separators=(",", ":")) + "\n"
+    )
+
+
+def _flush_batch_loss_log() -> None:
+    if _batch_loss_log_handle is not None:
+        _batch_loss_log_handle.flush()
+
+
+def _batch_loss_log_metadata() -> Dict[str, Any]:
+    raw_path = os.environ.get(_BATCH_LOSS_LOG_ENV, "").strip()
+    return {
+        "enabled": bool(raw_path),
+        "format": "jsonl",
+        "granularity": "optimizer-batch",
+        "path": str(Path(raw_path).expanduser().resolve()) if raw_path else None,
+    }
 
 
 def _mapping(value: Any, name: str) -> Mapping[str, Any]:
@@ -125,6 +168,12 @@ class OptimizationConfig:
     joint_epochs: int = 150
     batch_size: int = 256
     learning_rate: float = 5e-4
+    learning_rate_schedule: str = "constant"
+    learning_rate_warmup_start: float = 2e-5
+    learning_rate_peak: float = 1.5e-4
+    learning_rate_min: float = 1e-5
+    learning_rate_warmup_fraction: float = 0.1
+    learning_rate_decay_epochs: int = 50
     weight_decay: float = 1e-5
     ema_momentum: float = 0.996
     early_stopping_patience: int = 25
@@ -137,11 +186,30 @@ class OptimizationConfig:
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, Any]) -> "OptimizationConfig":
+        base_learning_rate = float(values.get("learning_rate", 5e-4))
         config = cls(
             pretrain_epochs=int(values.get("pretrain_epochs", 80)),
             joint_epochs=int(values.get("joint_epochs", 150)),
             batch_size=int(values.get("batch_size", 256)),
-            learning_rate=float(values.get("learning_rate", 5e-4)),
+            learning_rate=base_learning_rate,
+            learning_rate_schedule=str(
+                values.get("learning_rate_schedule", "constant")
+            ).strip().lower(),
+            learning_rate_warmup_start=float(
+                values.get("learning_rate_warmup_start", min(base_learning_rate, 2e-5))
+            ),
+            learning_rate_peak=float(
+                values.get("learning_rate_peak", base_learning_rate)
+            ),
+            learning_rate_min=float(
+                values.get("learning_rate_min", base_learning_rate)
+            ),
+            learning_rate_warmup_fraction=float(
+                values.get("learning_rate_warmup_fraction", 0.1)
+            ),
+            learning_rate_decay_epochs=int(
+                values.get("learning_rate_decay_epochs", 50)
+            ),
             weight_decay=float(values.get("weight_decay", 1e-5)),
             ema_momentum=float(values.get("ema_momentum", 0.996)),
             early_stopping_patience=int(values.get("early_stopping_patience", 25)),
@@ -162,6 +230,33 @@ class OptimizationConfig:
             raise ValueError("optimization.batch_size must be at least 2")
         if self.learning_rate <= 0 or self.weight_decay < 0:
             raise ValueError("optimizer values are invalid")
+        if self.learning_rate_schedule not in {"constant", "warmup_cosine"}:
+            raise ValueError(
+                "optimization.learning_rate_schedule must be constant or warmup_cosine"
+            )
+        for name, value in (
+            ("learning_rate_warmup_start", self.learning_rate_warmup_start),
+            ("learning_rate_peak", self.learning_rate_peak),
+            ("learning_rate_min", self.learning_rate_min),
+        ):
+            if value <= 0:
+                raise ValueError(f"optimization.{name} must be positive")
+        if self.learning_rate_warmup_start > self.learning_rate_peak:
+            raise ValueError(
+                "optimization.learning_rate_warmup_start cannot exceed learning_rate_peak"
+            )
+        if self.learning_rate_min > self.learning_rate_peak:
+            raise ValueError(
+                "optimization.learning_rate_min cannot exceed learning_rate_peak"
+            )
+        if not 0.0 <= self.learning_rate_warmup_fraction < 1.0:
+            raise ValueError(
+                "optimization.learning_rate_warmup_fraction must be in [0, 1)"
+            )
+        if self.learning_rate_decay_epochs < 1:
+            raise ValueError(
+                "optimization.learning_rate_decay_epochs must be positive"
+            )
         if not 0.0 < self.ema_momentum < 1.0:
             raise ValueError("optimization.ema_momentum must be between 0 and 1")
         if self.early_stopping_patience < 1:
@@ -183,6 +278,8 @@ class KANJEPAConfig:
     views: ViewConfig = field(default_factory=ViewConfig)
     losses: LossWeights = field(default_factory=LossWeights)
     optimization: OptimizationConfig = field(default_factory=OptimizationConfig)
+    threshold_policy: str = "mcc"
+    probability_calibration: str = "none"
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, Any]) -> "KANJEPAConfig":
@@ -202,6 +299,10 @@ class KANJEPAConfig:
             optimization=OptimizationConfig.from_mapping(
                 _mapping(values.get("optimization"), "optimization")
             ),
+            threshold_policy=str(values.get("threshold_policy", "mcc")).strip().lower(),
+            probability_calibration=str(
+                values.get("probability_calibration", "none")
+            ).strip().lower(),
         )
         config.validate()
         return config
@@ -215,6 +316,14 @@ class KANJEPAConfig:
             raise ValueError(
                 "predictor.data_flow_mode must be 'split' or " 
                 "'shared_augmented_source'"
+            )
+        if self.threshold_policy not in {"mcc", "f1", "gmean", "fixed_0.5"}:
+            raise ValueError(
+                "predictor.threshold_policy must be mcc, f1, gmean, or fixed_0.5"
+            )
+        if self.probability_calibration not in {"none", "platt"}:
+            raise ValueError(
+                "predictor.probability_calibration must be none or platt"
             )
 
 
@@ -321,8 +430,25 @@ class JEPAPredictorBase(BasePredictor):
         validation_scores = self._scores(
             torch, selection.model, validation_values, selection.arrays, device
         )
-        threshold = select_mcc_threshold(
-            validation_project.real_labels, validation_scores
+        calibrated_validation_scores = validation_scores
+        calibrator = None
+        if getattr(self.config, "probability_calibration", "none") == "platt":
+            from sklearn.linear_model import LogisticRegression
+
+            calibrator = LogisticRegression(
+                C=1.0, solver="lbfgs", max_iter=1000, random_state=selection_seed
+            )
+            calibrator.fit(
+                validation_scores.reshape(-1, 1), validation_project.real_labels
+            )
+            calibrated_validation_scores = calibrator.predict_proba(
+                validation_scores.reshape(-1, 1)
+            )[:, 1]
+        threshold_policy = getattr(self.config, "threshold_policy", "mcc")
+        threshold = select_metric_threshold(
+            validation_project.real_labels,
+            calibrated_validation_scores,
+            threshold_policy,
         )
 
         if self.config.optimization.refit_all_sources:
@@ -343,6 +469,8 @@ class JEPAPredictorBase(BasePredictor):
         scores = self._scores(
             torch, final.model, final.arrays.target_values, final.arrays, device
         )
+        if calibrator is not None:
+            scores = calibrator.predict_proba(scores.reshape(-1, 1))[:, 1]
         synthetic_rows = sum(
             len(project.augmented_values) - len(project.real_values)
             for project in partitions
@@ -362,6 +490,7 @@ class JEPAPredictorBase(BasePredictor):
                     self.config.optimization.use_amp and device.type == "cuda"
                 ),
                 "configuration": asdict(self.config),
+                "batch_loss_logging": _batch_loss_log_metadata(),
                 "architecture": {
                     **self._architecture_metadata(),
                     "classifier": self._classifier_name(),
@@ -392,11 +521,20 @@ class JEPAPredictorBase(BasePredictor):
                     "policy": "seeded leave-one-source-project-out",
                     "validation_project": validation_project.key,
                     "validation_rows": int(len(validation_project.real_labels)),
-                    "threshold_policy": "source-validation-mcc",
+                    "threshold_policy": f"source-validation-{threshold_policy}",
+                    "probability_calibration": getattr(self.config, "probability_calibration", "none"),
                     "threshold": threshold,
                     "selection_seed": selection_seed,
                     "best_joint_epoch": selection.best_joint_epoch,
                     "best_validation_loss": selection.best_validation_loss,
+                    "validation_score_mean": float(np.mean(validation_scores)),
+                    "validation_score_std": float(np.std(validation_scores)),
+                    "calibrated_validation_score_mean": float(
+                        np.mean(calibrated_validation_scores)
+                    ),
+                    "calibrated_validation_score_std": float(
+                        np.std(calibrated_validation_scores)
+                    ),
                 },
                 "final_training": {
                     "refit_all_sources": self.config.optimization.refit_all_sources,
@@ -534,6 +672,19 @@ class JEPAPredictorBase(BasePredictor):
         )
         gradient_scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
         loaders = self._loaders(torch, arrays, seed, device.type == "cuda")
+        pretrain_schedule_epochs = min(
+            self.config.optimization.pretrain_epochs,
+            self.config.optimization.learning_rate_decay_epochs,
+        )
+        pretrain_steps = max(pretrain_schedule_epochs * len(loaders["ssl"]), 1)
+        joint_schedule_epochs = min(
+            joint_epochs,
+            self.config.optimization.learning_rate_decay_epochs,
+        )
+        joint_steps = max(
+            joint_schedule_epochs * max(len(loader) for loader in loaders.values()),
+            1,
+        )
         classification_context = self._classification_context(
             torch, arrays, device
         )
@@ -548,6 +699,10 @@ class JEPAPredictorBase(BasePredictor):
                 loaders["ssl"],
                 device,
                 amp_enabled,
+                stage_name,
+                epoch + 1,
+                self.config.optimization.pretrain_epochs,
+                pretrain_steps,
             )
             self._log_epoch(
                 stage_name, "pretrain", epoch + 1, self.config.optimization.pretrain_epochs, final_losses
@@ -582,6 +737,10 @@ class JEPAPredictorBase(BasePredictor):
                 source_weights,
                 device,
                 amp_enabled,
+                stage_name,
+                epoch + 1,
+                joint_epochs,
+                joint_steps,
             )
             completed_joint_epochs = epoch + 1
             if validation_values is not None and validation_labels is not None:
@@ -733,15 +892,33 @@ class JEPAPredictorBase(BasePredictor):
         ssl_loader,
         device,
         amp_enabled: bool,
+        stage_name: str,
+        epoch: int,
+        epoch_count: int,
+        total_steps: int,
     ) -> Dict[str, float]:
         model.train()
         model.target_encoder.eval()
-        totals = {"total": 0.0, "jepa": 0.0, "variance": 0.0, "covariance": 0.0}
-        for (values,) in ssl_loader:
+        loss_names = ["total", "jepa", "variance"]
+        if self.config.losses.covariance > 0:
+            loss_names.append("covariance")
+        totals = {name: 0.0 for name in loss_names}
+        batch_count = len(ssl_loader)
+        for batch_index, (values,) in enumerate(ssl_loader, start=1):
             values = values.to(device, non_blocking=True)
+            step_index = (epoch - 1) * batch_count + (batch_index - 1)
+            self._set_optimizer_learning_rate(
+                optimizer,
+                self._learning_rate_for_step(step_index, total_steps),
+            )
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type=device.type, enabled=amp_enabled):
-                jepa, variance, covariance = self._jepa_terms(torch, model, values)
+                jepa, variance, covariance = self._jepa_terms(
+                    torch,
+                    model,
+                    values,
+                    include_covariance=self.config.losses.covariance > 0,
+                )
                 loss = (
                     self.config.losses.jepa * jepa
                     + self.config.losses.variance * variance
@@ -749,10 +926,36 @@ class JEPAPredictorBase(BasePredictor):
                 )
             self._optimizer_step(torch, model, optimizer, gradient_scaler, loss)
             batch = len(values)
-            totals["total"] += float(loss.detach().cpu()) * batch
-            totals["jepa"] += float(jepa.detach().cpu()) * batch
-            totals["variance"] += float(variance.detach().cpu()) * batch
-            totals["covariance"] += float(covariance.detach().cpu()) * batch
+            batch_loss_names = ("total", "jepa", "variance")
+            loss_tensors = [loss, jepa, variance]
+            if self.config.losses.covariance > 0:
+                batch_loss_names += ("covariance",)
+                loss_tensors.append(covariance)
+            loss_values = (
+                torch.stack(tuple(loss_tensors))
+                .detach()
+                .float()
+                .cpu()
+                .tolist()
+            )
+            batch_losses = dict(zip(batch_loss_names, loss_values))
+            for name, value in batch_losses.items():
+                totals[name] += value * batch
+            _record_batch_losses(
+                {
+                    "schema_version": 1,
+                    "stage": stage_name,
+                    "phase": "pretrain",
+                    "epoch": epoch,
+                    "epoch_count": epoch_count,
+                    "batch": batch_index,
+                    "batch_count": batch_count,
+                    "batch_size": batch,
+                    "learning_rate": float(optimizer.param_groups[0]["lr"]),
+                    "losses": batch_losses,
+                }
+            )
+        _flush_batch_loss_log()
         return {name: value / len(ssl_loader.dataset) for name, value in totals.items()}
 
     def _joint_epoch(
@@ -766,22 +969,30 @@ class JEPAPredictorBase(BasePredictor):
         source_weights: np.ndarray,
         device,
         amp_enabled: bool,
+        stage_name: str,
+        epoch: int,
+        epoch_count: int,
+        total_steps: int,
     ) -> Dict[str, float]:
         model.train()
         model.target_encoder.eval()
         iterators = {name: _cycle(loader) for name, loader in loaders.items()}
         steps = max(len(loader) for loader in loaders.values())
         weights = torch.as_tensor(source_weights, dtype=torch.float32, device=device)
-        totals = {
-            "total": 0.0,
-            "jepa": 0.0,
-            "classification": 0.0,
-            "alignment": 0.0,
-            "consistency": 0.0,
-            "variance": 0.0,
-            "covariance": 0.0,
-        }
-        for _ in range(steps):
+        loss_names = ["total", "jepa", "classification", "variance"]
+        if self.config.losses.alignment > 0:
+            loss_names.append("alignment")
+        if self.config.losses.consistency > 0:
+            loss_names.append("consistency")
+        if self.config.losses.covariance > 0:
+            loss_names.append("covariance")
+        totals = {name: 0.0 for name in loss_names}
+        for batch_index in range(1, steps + 1):
+            step_index = (epoch - 1) * steps + (batch_index - 1)
+            self._set_optimizer_learning_rate(
+                optimizer,
+                self._learning_rate_for_step(step_index, total_steps),
+            )
             ssl_values = next(iterators["ssl"])[0].to(device, non_blocking=True)
             class_values, class_labels, class_projects, class_indices = next(
                 iterators["classification"]
@@ -790,16 +1001,30 @@ class JEPAPredictorBase(BasePredictor):
             class_labels = class_labels.to(device, non_blocking=True)
             class_projects = class_projects.to(device, non_blocking=True)
             class_indices = class_indices.to(device, non_blocking=True)
-            real_values, real_projects = next(iterators["real"])
-            real_values = real_values.to(device, non_blocking=True)
-            real_projects = real_projects.to(device, non_blocking=True)
-            target_values = next(iterators["target"])[0].to(device, non_blocking=True)
+            real_values = real_projects = None
+            if self.config.losses.alignment > 0:
+                real_values, real_projects = next(iterators["real"])
+                real_values = real_values.to(device, non_blocking=True)
+                real_projects = real_projects.to(device, non_blocking=True)
+            target_values = None
+            if (
+                self.config.losses.alignment > 0
+                or self.config.losses.consistency > 0
+            ):
+                target_values = next(iterators["target"])[0].to(
+                    device, non_blocking=True
+                )
             step_classification_context = self._refresh_classification_context(
                 model, classification_context
             )
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type=device.type, enabled=amp_enabled):
-                jepa, variance, covariance = self._jepa_terms(torch, model, ssl_values)
+                jepa, variance, covariance = self._jepa_terms(
+                    torch,
+                    model,
+                    ssl_values,
+                    include_covariance=self.config.losses.covariance > 0,
+                )
                 logits = self._classification_logits(
                     model,
                     class_values,
@@ -811,26 +1036,30 @@ class JEPAPredictorBase(BasePredictor):
                 )
                 class_weights = weights[class_projects]
                 classification = (row_losses * class_weights).sum() / class_weights.sum().clamp_min(1e-8)
-                source_latent = model.context_latent(real_values)
-                target_latent = model.context_latent(target_values)
-                alignment = weighted_coral_loss(
-                    torch, source_latent, target_latent, weights[real_projects]
-                )
-                first_view = target_values + torch.randn_like(target_values) * self.config.views.consistency_noise_std
-                second_view = target_values + torch.randn_like(target_values) * self.config.views.consistency_noise_std
-                first_probability = torch.sigmoid(
-                    self._classification_logits(
-                        model, first_view, step_classification_context, None
+                alignment = jepa.new_zeros(())
+                if self.config.losses.alignment > 0:
+                    source_latent = model.context_latent(real_values)
+                    target_latent = model.context_latent(target_values)
+                    alignment = weighted_coral_loss(
+                        torch, source_latent, target_latent, weights[real_projects]
                     )
-                )
-                second_probability = torch.sigmoid(
-                    self._classification_logits(
-                        model, second_view, step_classification_context, None
+                consistency = jepa.new_zeros(())
+                if self.config.losses.consistency > 0:
+                    first_view = target_values + torch.randn_like(target_values) * self.config.views.consistency_noise_std
+                    second_view = target_values + torch.randn_like(target_values) * self.config.views.consistency_noise_std
+                    first_probability = torch.sigmoid(
+                        self._classification_logits(
+                            model, first_view, step_classification_context, None
+                        )
                     )
-                )
-                consistency = torch.nn.functional.mse_loss(
-                    first_probability, second_probability
-                )
+                    second_probability = torch.sigmoid(
+                        self._classification_logits(
+                            model, second_view, step_classification_context, None
+                        )
+                    )
+                    consistency = torch.nn.functional.mse_loss(
+                        first_probability, second_probability
+                    )
                 loss = (
                     self.config.losses.jepa * jepa
                     + self.config.losses.classification * classification
@@ -840,20 +1069,81 @@ class JEPAPredictorBase(BasePredictor):
                     + self.config.losses.covariance * covariance
                 )
             self._optimizer_step(torch, model, optimizer, gradient_scaler, loss)
-            values = {
+            loss_by_name = {
                 "total": loss,
                 "jepa": jepa,
                 "classification": classification,
+                "variance": variance,
                 "alignment": alignment,
                 "consistency": consistency,
-                "variance": variance,
                 "covariance": covariance,
             }
-            for name, value in values.items():
-                totals[name] += float(value.detach().cpu())
+            loss_values = (
+                torch.stack(tuple(loss_by_name[name] for name in loss_names))
+                .detach()
+                .float()
+                .cpu()
+                .tolist()
+            )
+            batch_losses = dict(zip(loss_names, loss_values))
+            for name, value in batch_losses.items():
+                totals[name] += value
+            _record_batch_losses(
+                {
+                    "schema_version": 1,
+                    "stage": stage_name,
+                    "phase": "joint",
+                    "epoch": epoch,
+                    "epoch_count": epoch_count,
+                    "batch": batch_index,
+                    "batch_count": steps,
+                    "batch_size": int(len(class_values)),
+                    "learning_rate": float(optimizer.param_groups[0]["lr"]),
+                    "losses": batch_losses,
+                }
+            )
+        _flush_batch_loss_log()
         return {name: value / steps for name, value in totals.items()}
 
-    def _jepa_terms(self, torch, model, values):
+    def _learning_rate_for_step(self, step: int, total_steps: int) -> float:
+        optimization = self.config.optimization
+        if optimization.learning_rate_schedule == "constant":
+            return float(optimization.learning_rate)
+        if total_steps <= 1:
+            return float(optimization.learning_rate_peak)
+        warmup_steps = max(
+            1,
+            min(
+                total_steps - 1,
+                int(round(total_steps * optimization.learning_rate_warmup_fraction)),
+            ),
+        )
+        if step < warmup_steps:
+            progress = float(step) / float(max(warmup_steps - 1, 1))
+            return float(
+                optimization.learning_rate_warmup_start
+                + progress
+                * (
+                    optimization.learning_rate_peak
+                    - optimization.learning_rate_warmup_start
+                )
+            )
+        decay_steps = total_steps - warmup_steps
+        decay_progress = float(step - warmup_steps) / float(max(decay_steps - 1, 1))
+        decay_progress = min(max(decay_progress, 0.0), 1.0)
+        cosine = 0.5 * (1.0 + math.cos(math.pi * decay_progress))
+        return float(
+            optimization.learning_rate_min
+            + cosine
+            * (optimization.learning_rate_peak - optimization.learning_rate_min)
+        )
+
+    @staticmethod
+    def _set_optimizer_learning_rate(optimizer, learning_rate: float) -> None:
+        for parameter_group in optimizer.param_groups:
+            parameter_group["lr"] = float(learning_rate)
+
+    def _jepa_terms(self, torch, model, values, include_covariance: bool = True):
         mask = sample_feature_mask(
             torch,
             values,
@@ -866,7 +1156,9 @@ class JEPAPredictorBase(BasePredictor):
         with torch.no_grad():
             target = model.target_latent(target_view)
         jepa = latent_prediction_loss(torch, prediction, target)
-        variance, covariance = variance_covariance_losses(torch, context)
+        variance, covariance = variance_covariance_losses(
+            torch, context, include_covariance=include_covariance
+        )
         return jepa, variance, covariance
 
     def _optimizer_step(
@@ -1093,7 +1385,7 @@ class KANJEPAPredictor(JEPAPredictorBase):
     @staticmethod
     def _architecture_metadata() -> Dict[str, str]:
         return {
-            "context_encoder": "KAN",
-            "target_encoder": "EMA-KAN",
+            "context_encoder": "Chebyshev-KAN",
+            "target_encoder": "EMA-Chebyshev-KAN",
             "latent_predictor": "MLP",
         }

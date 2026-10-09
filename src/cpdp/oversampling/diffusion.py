@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import numpy as np
 
@@ -175,6 +175,7 @@ class ProjectConditionedTabularDDPM:
         scaler_centers: Optional[np.ndarray] = None,
         scaler_scales: Optional[np.ndarray] = None,
         formula_guidance: Optional[Any] = None,
+        loss_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> Dict[str, Any]:
         values_array = np.asarray(normalized_defects, dtype=np.float32)
         projects_array = np.asarray(project_ids, dtype=np.int64)
@@ -343,11 +344,50 @@ class ProjectConditionedTabularDDPM:
                 )
                 gradient_scaler.step(optimizer)
                 gradient_scaler.update()
-                total_loss += float(loss.detach().cpu())
-                total_noise_loss += float(noise_loss.detach().cpu())
-                total_physics_loss += float(physics_loss.detach().cpu())
-                total_consistency_loss += float(consistency_loss.detach().cpu())
-                total_semantic_loss += float(semantic_loss.detach().cpu())
+                if loss_callback is None:
+                    total_loss += float(loss.detach().cpu())
+                    total_noise_loss += float(noise_loss.detach().cpu())
+                    total_physics_loss += float(physics_loss.detach().cpu())
+                    total_consistency_loss += float(consistency_loss.detach().cpu())
+                    total_semantic_loss += float(semantic_loss.detach().cpu())
+                else:
+                    batch_values = torch.stack(
+                        (
+                            loss,
+                            noise_loss,
+                            physics_loss,
+                            consistency_loss,
+                            semantic_loss,
+                        )
+                    ).detach().cpu().tolist()
+                    (
+                        batch_total_loss,
+                        batch_noise_loss,
+                        batch_physics_loss,
+                        batch_consistency_loss,
+                        batch_semantic_loss,
+                    ) = (float(value) for value in batch_values)
+                    total_loss += batch_total_loss
+                    total_noise_loss += batch_noise_loss
+                    total_physics_loss += batch_physics_loss
+                    total_consistency_loss += batch_consistency_loss
+                    total_semantic_loss += batch_semantic_loss
+                    loss_callback(
+                        {
+                            "epoch": int(epoch + 1),
+                            "batch_index": int(batches + 1),
+                            "global_batch": int(epoch * len(loader) + batches + 1),
+                            "total_loss": batch_total_loss,
+                            "noise_loss": batch_noise_loss,
+                            "physics_loss": batch_physics_loss,
+                            "consistency_loss": batch_consistency_loss,
+                            "semantic_loss": batch_semantic_loss,
+                            "physics_scale": float(physics_scale),
+                            "learning_rate": float(
+                                optimizer.param_groups[0]["lr"]
+                            ),
+                        }
+                    )
                 batches += 1
 
             scheduler.step()

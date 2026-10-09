@@ -31,6 +31,11 @@ from threadpoolctl import threadpool_limits
 
 
 SUPPORTED_PROTOCOL = "within-family-multisource-transductive-lopo"
+PREDICTOR_BATCH_LOSS_LOG_ENV = "CPDP_PREDICTOR_BATCH_LOSS_LOG"
+PREDICTOR_BATCH_LOSS_METHODS = {
+    "ipgdo_kan_jepa",
+    "ipgdo_transformer_jepa",
+}
 
 
 def _effective_result_signature(
@@ -340,6 +345,19 @@ class ExperimentRunner:
             elapsed = time.perf_counter() - started
             print(f"WORK {task_name} elapsed={elapsed:.0f}s", flush=True)
 
+    def _prediction_batch_loss_path(self, task: RunTask) -> Optional[Path]:
+        if task.method not in PREDICTOR_BATCH_LOSS_METHODS:
+            return None
+        return (
+            self.config.output_dir
+            / "training_logs"
+            / task.profile
+            / task.method
+            / task.family
+            / task.target
+            / f"seed_{task.seed}.jsonl"
+        ).resolve()
+
     def _execute_task(
         self,
         task: RunTask,
@@ -354,6 +372,12 @@ class ExperimentRunner:
         started_at = _utc_now()
         started = time.perf_counter()
         task_name = f"{method_name} {family}/{target_name} seed={seed}"
+        batch_loss_log_path = self._prediction_batch_loss_path(task)
+        previous_batch_loss_log = os.environ.get(PREDICTOR_BATCH_LOSS_LOG_ENV)
+        if batch_loss_log_path is not None:
+            batch_loss_log_path.parent.mkdir(parents=True, exist_ok=True)
+            batch_loss_log_path.unlink(missing_ok=True)
+            os.environ[PREDICTOR_BATCH_LOSS_LOG_ENV] = str(batch_loss_log_path)
         base_payload: Dict[str, Any] = {
             "schema_version": 1,
             "status": "running",
@@ -366,6 +390,9 @@ class ExperimentRunner:
             "target_label_policy": self.config.target_labels,
             "config_file": str(self.config.source_path),
             "started_at": started_at,
+            "training_loss_log": (
+                str(batch_loss_log_path) if batch_loss_log_path is not None else None
+            ),
         }
         if verbose:
             print(f"RUN  {task_name}", flush=True)
@@ -448,6 +475,11 @@ class ExperimentRunner:
                 print(f"FAIL {method_name} {family}/{target_name}: {message}", flush=True)
             return TaskOutcome(succeeded=False, error_message=message)
         finally:
+            if batch_loss_log_path is not None:
+                if previous_batch_loss_log is None:
+                    os.environ.pop(PREDICTOR_BATCH_LOSS_LOG_ENV, None)
+                else:
+                    os.environ[PREDICTOR_BATCH_LOSS_LOG_ENV] = previous_batch_loss_log
             heartbeat_stop.set()
             if heartbeat_thread is not None:
                 heartbeat_thread.join(timeout=1.0)

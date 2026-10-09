@@ -26,13 +26,20 @@ def latent_prediction_loss(torch, predicted, target):
     return functional.mse_loss(predicted, target)
 
 
-def variance_covariance_losses(torch, representations, minimum_std: float = 1.0):
+def variance_covariance_losses(
+    torch,
+    representations,
+    minimum_std: float = 1.0,
+    include_covariance: bool = True,
+):
     if representations.shape[0] < 2:
         zero = representations.sum() * 0.0
         return zero, zero
     centered = representations - representations.mean(dim=0, keepdim=True)
     standard_deviation = torch.sqrt(centered.var(dim=0, unbiased=False) + 1e-4)
     variance_loss = torch.relu(minimum_std - standard_deviation).mean()
+    if not include_covariance:
+        return variance_loss, variance_loss.new_zeros(())
     covariance = centered.T @ centered / max(1, representations.shape[0] - 1)
     diagonal = torch.diagonal(covariance)
     covariance_loss = (covariance.square().sum() - diagonal.square().sum()) / max(

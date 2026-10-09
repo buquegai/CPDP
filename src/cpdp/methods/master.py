@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import tempfile
 from math import log2
 from typing import Iterable, Sequence
 
@@ -10,6 +14,14 @@ from sklearn.feature_selection import mutual_info_classif
 
 from cpdp.methods.base import BaseMethod, MethodProvenance
 from cpdp.types import LabeledProject, PredictionResult, UnlabeledProject
+
+# ---------------------------------------------------------------------------
+# MIC backend: minepy is required by paper Eq. (9) but has no Python 3.12 build
+# (its generated C code references PyLongObject.ob_digit, removed in 3.12).
+# A conda-forge Python 3.10 environment provides the reference implementation;
+# we call it in batch through a subprocess and cache the result per call.
+# ---------------------------------------------------------------------------
+MIC_PYTHON = os.environ.get("CPDP_MIC_PYTHON", "/root/anaconda3/envs/mic310/bin/python")
 
 
 def _entropy(labels: np.ndarray) -> float:
@@ -44,13 +56,17 @@ def _mdl_cutpoints(values: np.ndarray, labels: np.ndarray) -> np.ndarray:
         if best_split is None:
             return []
 
+        # Fayyad & Irani MDL stopping criterion:
+        #   Gain > [ log2(N-1) + Delta ] / N
+        #   Delta = log2(3^k - 2) - [ k*H(S) - k1*H(S1) - k2*H(S2) ]
+        # NOTE: the entropy terms are SUBTRACTED inside the bracket, so the
+        # implementation must subtract them again when accumulating Delta.
         classes = len(np.unique(labels[start:stop]))
         left_classes = len(np.unique(labels[start:best_split]))
         right_classes = len(np.unique(labels[best_split:stop]))
-        delta = log2(3**classes - 2)
-        delta -= classes * parent_entropy
-        delta -= -left_classes * _entropy(labels[start:best_split])
-        delta -= -right_classes * _entropy(labels[best_split:stop])
+        delta = log2(3**classes - 2) - classes * parent_entropy
+        delta -= left_classes * _entropy(labels[start:best_split])
+        delta -= right_classes * _entropy(labels[best_split:stop])
         threshold = (log2(count - 1) + delta) / count
         if best_gain <= threshold:
             return []
@@ -88,22 +104,93 @@ def _kl_divergence(source: np.ndarray, target: np.ndarray) -> float:
     return float(np.sum(source_probability * np.log(source_probability / target_probability)))
 
 
-def _feature_importance(values: np.ndarray, labels: np.ndarray, seed: int) -> tuple[np.ndarray, str]:
-    try:
-        from minepy import MINE
+def _minmax(values: np.ndarray) -> np.ndarray:
+    """Scale a vector to [0, 1].
 
-        scores = []
-        for index in range(values.shape[1]):
-            mine = MINE()
-            mine.compute_score(values[:, index], labels)
-            scores.append(float(mine.mic()))
-        backend = "minepy.MINE.mic"
-        importance = np.asarray(scores, dtype=np.float64)
-    except (ImportError, RuntimeError, ValueError):
+    Paper Eq. (3)-(5) normalize the mutual-information and KL terms before
+    combining them. Normalizing to unit SUM (the previous behaviour) pushed
+    every D_m to O(1/d), where sigmoid is nearly linear, so the source weights
+    collapsed to uniform. Min-max normalization keeps the two terms on equal
+    footing (which is what Eq. (3) intends for a convex combination) while
+    keeping D_m in a range where sigmoid can actually discriminate.
+    """
+    span = float(values.max() - values.min())
+    if span <= 0:
+        return np.full(values.shape, 0.5, dtype=np.float64)
+    return (values - float(values.min())) / span
+
+
+_MIC_SCRIPT = r'''
+import sys, json
+import numpy as np
+from minepy import MINE
+
+payload = json.loads(open(sys.argv[1], "r").read())
+features = np.asarray(payload["features"], dtype=np.float64)
+labels = np.asarray(payload["labels"], dtype=np.float64)
+scores = []
+for index in range(features.shape[1]):
+    mine = MINE(alpha=0.6, c=15)
+    mine.compute_score(features[:, index], labels)
+    scores.append(float(mine.mic()))
+print(json.dumps(scores))
+'''
+
+
+def _feature_importance(values: np.ndarray, labels: np.ndarray, seed: int) -> tuple[np.ndarray, str]:
+    importance = None
+    backend = None
+
+    # 1) paper-faithful MIC via the reference minepy in its own interpreter
+    if os.path.isfile(MIC_PYTHON):
+        try:
+            with tempfile.TemporaryDirectory() as workdir:
+                script = os.path.join(workdir, "mic_worker.py")
+                payload = os.path.join(workdir, "payload.json")
+                with open(script, "w", encoding="utf-8") as handle:
+                    handle.write(_MIC_SCRIPT)
+                with open(payload, "w", encoding="utf-8") as handle:
+                    json.dump(
+                        {
+                            "features": values.tolist(),
+                            "labels": labels.astype(float).tolist(),
+                        },
+                        handle,
+                    )
+                completed = subprocess.run(
+                    [MIC_PYTHON, script, payload],
+                    capture_output=True,
+                    text=True,
+                    timeout=900,
+                    check=True,
+                )
+            importance = np.asarray(json.loads(completed.stdout.strip()), dtype=np.float64)
+            backend = "minepy.MINE.mic (python3.10 reference env)"
+        except Exception:
+            importance = None
+
+    # 2) in-process minepy, if one were ever importable under 3.12
+    if importance is None:
+        try:
+            from minepy import MINE
+
+            scores = []
+            for index in range(values.shape[1]):
+                mine = MINE(alpha=0.6, c=15)
+                mine.compute_score(values[:, index], labels)
+                scores.append(float(mine.mic()))
+            importance = np.asarray(scores, dtype=np.float64)
+            backend = "minepy.MINE.mic"
+        except (ImportError, RuntimeError, ValueError):
+            importance = None
+
+    # 3) documented fallback
+    if importance is None:
         importance = mutual_info_classif(
             values, labels, discrete_features=False, random_state=seed
         ).astype(np.float64)
         backend = "sklearn.mutual_info_classif fallback"
+
     total = float(np.sum(importance))
     if total <= 0:
         return np.full(values.shape[1], 1.0 / values.shape[1]), backend
@@ -123,8 +210,8 @@ def _source_transfer_weight(
         divergence.append(_kl_divergence(source_discrete, target_discrete))
     mutual_information = np.asarray(mutual_information, dtype=np.float64)
     divergence = np.asarray(divergence, dtype=np.float64)
-    normalized_mi = mutual_information / max(float(mutual_information.sum()), 1e-12)
-    normalized_kl = divergence / max(float(divergence.sum()), 1e-12)
+    normalized_mi = _minmax(mutual_information)
+    normalized_kl = _minmax(divergence)
     feature_transfer = weight_factor * normalized_mi - (1.0 - weight_factor) * normalized_kl
     return float(np.sum(expit(feature_transfer)))
 
@@ -189,8 +276,9 @@ class MASTERMethod(BaseMethod):
         notes=(
             "The official repository states that the MASTER source code will be released later and "
             "currently contains datasets and baseline code only. This implementation must not be "
-            "described as an official-code reproduction. MIC uses minepy when available and records "
-            "a mutual-information fallback otherwise."
+            "described as an official-code reproduction. Feature importance uses the MIC of paper "
+            "Eq. (9) via a conda-forge minepy reference interpreter (python3.10); minepy has no "
+            "Python 3.12 build, so the backend actually used is recorded in the result metadata."
         ),
     )
 

@@ -1,0 +1,486 @@
+schema_version: 1
+data:
+  root: ../data
+  file_suffix: __FedCPDP.csv
+  label_column: defect_label
+  cleaning: master
+  families:
+    NASA:
+      projects:
+      - CM1
+      - MW1
+      - PC1
+      - PC3
+      - PC4
+      effort_column: LOC_TOTAL
+    AEEEM:
+      projects:
+      - EQ
+      - JDT
+      - LC
+      - ML
+      - PDE
+      effort_column: ck_oo_numberOfLinesOfCode
+    ReLink:
+      projects:
+      - Apache
+      - Safe
+      - Zxing
+      effort_column: CountLineCode
+    PROMISE:
+      projects:
+      - ant-1.7
+      - camel-1.6
+      - ivy-2.0
+      - jedit-4.0
+      - log4j-1.0
+      - lucene-2.4
+      - poi-3.0
+      - synapse-1.2
+      - tomcat
+      - velocity-1.6
+      - xalan-2.4
+      - xerces-1.3
+      effort_column: loc
+experiment:
+  protocol: within-family-multisource-transductive-lopo
+  target_labels: evaluation-only
+  repetitions: 10
+  seeds:
+  - 2026072201
+  - 2026072202
+  - 2026072203
+  - 2026072204
+  - 2026072205
+  - 2026072206
+  - 2026072207
+  - 2026072208
+  - 2026072209
+  - 2026072210
+  metrics:
+  - auc
+  - auprc
+  - mcc
+  - f1
+  - gmean
+  - popt20
+  save_predictions: true
+  output_dir: /mnt/proj/IPGDO_NetworkCapacity_Linux_Package_20260809/outputs/server_runs/formal/full/9f90f5526a55
+profiles:
+  full:
+    dssdpp:
+      source_selection: corr
+      use_weka_cfs: true
+    master:
+      lambda: 0.5
+      smote_k_neighbors: 5
+    fedcpdp:
+      backend: torch
+      device: auto
+      dtype: float32
+      seed_strategy: independent_blake2
+      result_signature: fedcpdp-torch-manual-v3-outer10-independent-blake2
+      rounds: 80
+      local_epochs: 12
+      ensemble_size: 3
+      hash_dim: 1024
+      parallel_workers: 1
+      batch_ensemble_on_device: true
+      outer_seed_batch_size: 10
+    fd_hdp_u:
+      pretrain_epochs: 50
+      fine_tune_epochs: 100
+      compressed_dim: 128
+      device: auto
+    mbl_cpdp_sv:
+      wall_clock_seconds: 60
+      candidate_timeout_seconds: 20
+      final_fit_timeout_seconds: 60
+      upper_evaluations: 10000
+      lower_evaluations: 5
+      ensemble_pool_size: 6
+      ensemble_selected_size: 3
+      parallel_workers: 5
+    ipgdo_kan_jepa:
+      result_signature: server-v16-chebyshev-degree4-gmean-dynamic-lr-ratio0p7-loss-selected-seeds-ep160-300-9f90f5526a55
+      oversampling:
+        device: auto
+        target_minority_ratio: 0.7
+        role:
+          max_components: 4
+          l1_c: 0.2
+          minimum_component_weight: 0.01
+        formula:
+          l1_c: 0.1
+          max_terms: 10
+          minimum_reliability: 0.0
+          use_reliability_weighting: false
+          project_blend_strength: 50.0
+          minimum_class_samples: 4
+        diffusion:
+          hidden_dim: 256
+          residual_blocks: 4
+          dropout: 0.1
+          timesteps: 200
+          schedule: cosine
+          epochs: 500
+          batch_size: 256
+          learning_rate: 0.001
+          weight_decay: 1.0e-05
+          gradient_clip_norm: 1.0
+          sample_batch_size: 1024
+          use_amp: true
+          normalized_clip: 8.0
+          physics_warmup_fraction: 0.2
+          formula_consistency_weight: 0.0
+          formula_semantic_weight: 0.05
+      oversampling_reuse:
+        enabled: true
+        seed_map: artifacts/ipgdo_ratio0p7/best_oversampling_seeds.yaml
+      predictor:
+        device: auto
+        input_clip: 8.0
+        data_flow_mode: shared_augmented_source
+        encoder:
+          hidden_dims:
+          - 128
+          - 64
+          latent_dim: 64
+          chebyshev_degree: 4
+          chebyshev_input_scale: 6.0
+          chebyshev_scale: 0.1
+          base_scale: 1.0
+          dropout: 0.1
+        jepa_predictor:
+          hidden_dims:
+          - 128
+          mask_embedding_dim: 32
+          dropout: 0.1
+        classifier:
+          context_size: 32
+          hidden_dim: 128
+          hidden_multiplier: 2.0
+          encoder_blocks: 1
+          predictor_blocks: 1
+          context_dropout: 0.1
+          dropout: 0.1
+          candidate_batch_size: 1024
+        views:
+          minimum_mask_ratio: 0.2
+          maximum_mask_ratio: 0.5
+          target_noise_std: 0.01
+          consistency_noise_std: 0.02
+        losses:
+          jepa: 1.0
+          classification: 1.0
+          alignment: 0.1
+          consistency: 0.1
+          variance: 0.05
+          covariance: 0.01
+        optimization:
+          pretrain_epochs: 160
+          joint_epochs: 300
+          batch_size: 256
+          learning_rate: 0.0001
+          learning_rate_schedule: warmup_cosine
+          learning_rate_warmup_start: 2.0e-05
+          learning_rate_peak: 0.00015
+          learning_rate_min: 1.0e-05
+          learning_rate_warmup_fraction: 0.1
+          learning_rate_decay_epochs: 50
+          weight_decay: 1.0e-05
+          ema_momentum: 0.996
+          early_stopping_patience: 25
+          gradient_clip_norm: 1.0
+          source_weight_temperature: 1.0
+          source_weight_update_interval: 5
+          use_amp: true
+          refit_all_sources: true
+          log_every_epochs: 10
+        threshold_policy: gmean
+        probability_calibration: none
+    ipgdo_transformer_jepa:
+      result_signature: ipgdo-transformer-jepa-pinn-ipgdo-loss-selected-seeds-v1
+      oversampling:
+        device: auto
+        target_minority_ratio: 1.0
+        role:
+          max_components: 4
+          l1_c: 0.2
+          minimum_component_weight: 0.01
+        formula:
+          l1_c: 0.1
+          max_terms: 10
+          minimum_reliability: 0.0
+          use_reliability_weighting: false
+          project_blend_strength: 50.0
+          minimum_class_samples: 4
+        diffusion:
+          hidden_dim: 256
+          residual_blocks: 4
+          dropout: 0.1
+          timesteps: 200
+          schedule: cosine
+          epochs: 500
+          batch_size: 256
+          learning_rate: 0.001
+          weight_decay: 1.0e-05
+          gradient_clip_norm: 1.0
+          sample_batch_size: 1024
+          use_amp: true
+          normalized_clip: 8.0
+          physics_warmup_fraction: 0.2
+          formula_consistency_weight: 0.0
+          formula_semantic_weight: 0.05
+      oversampling_reuse:
+        enabled: true
+        seed_map: artifacts/ipgdo_loss_selected_oversampling/best_oversampling_seeds.yaml
+      predictor:
+        device: auto
+        input_clip: 8.0
+        encoder:
+          model_dim: 64
+          latent_dim: 64
+          num_heads: 4
+          num_layers: 2
+          feedforward_dim: 128
+          dropout: 0.1
+          activation: gelu
+        jepa_predictor:
+          model_dim: 64
+          num_heads: 4
+          num_layers: 2
+          feedforward_dim: 128
+          dropout: 0.1
+          activation: gelu
+        views:
+          minimum_mask_ratio: 0.2
+          maximum_mask_ratio: 0.5
+          target_noise_std: 0.01
+          consistency_noise_std: 0.02
+        losses:
+          jepa: 1.0
+          classification: 1.0
+          alignment: 0.1
+          consistency: 0.1
+          variance: 0.05
+          covariance: 0.01
+        optimization:
+          pretrain_epochs: 160
+          joint_epochs: 300
+          batch_size: 256
+          learning_rate: 0.0001
+          learning_rate_schedule: constant
+          learning_rate_warmup_start: 2.0e-05
+          learning_rate_peak: 0.00015
+          learning_rate_min: 1.0e-05
+          learning_rate_warmup_fraction: 0.1
+          learning_rate_decay_epochs: 50
+          weight_decay: 1.0e-05
+          ema_momentum: 0.996
+          early_stopping_patience: 25
+          gradient_clip_norm: 1.0
+          source_weight_temperature: 1.0
+          source_weight_update_interval: 5
+          use_amp: true
+          refit_all_sources: true
+          log_every_epochs: 10
+  smoke:
+    dssdpp:
+      source_selection: corr
+      use_weka_cfs: true
+    master:
+      lambda: 0.5
+      smote_k_neighbors: 3
+    fedcpdp:
+      backend: torch
+      device: auto
+      dtype: float32
+      seed_strategy: independent_blake2
+      result_signature: fedcpdp-torch-manual-v3-outer1-independent-blake2
+      rounds: 1
+      local_epochs: 1
+      ensemble_size: 1
+      hash_dim: 64
+      parallel_workers: 1
+      batch_ensemble_on_device: true
+      outer_seed_batch_size: 1
+    fd_hdp_u:
+      pretrain_epochs: 1
+      fine_tune_epochs: 1
+      compressed_dim: 128
+      device: auto
+    mbl_cpdp_sv:
+      wall_clock_seconds: 20
+      candidate_timeout_seconds: 5
+      final_fit_timeout_seconds: 15
+      upper_evaluations: 4
+      lower_evaluations: 2
+      ensemble_pool_size: 2
+      ensemble_selected_size: 1
+      parallel_workers: 2
+    ipgdo_kan_jepa:
+      oversampling:
+        device: auto
+        target_minority_ratio: 1.0
+        role:
+          max_components: 4
+          l1_c: 0.2
+          minimum_component_weight: 0.01
+        formula:
+          l1_c: 0.1
+          max_terms: 10
+          minimum_reliability: 0.0
+          use_reliability_weighting: false
+          project_blend_strength: 50.0
+          minimum_class_samples: 4
+        diffusion:
+          hidden_dim: 64
+          residual_blocks: 2
+          dropout: 0.0
+          timesteps: 12
+          schedule: cosine
+          epochs: 2
+          batch_size: 256
+          learning_rate: 0.001
+          weight_decay: 1.0e-05
+          gradient_clip_norm: 1.0
+          sample_batch_size: 128
+          use_amp: true
+          normalized_clip: 8.0
+          physics_warmup_fraction: 0.2
+          formula_consistency_weight: 0.0
+          formula_semantic_weight: 0.05
+      oversampling_reuse:
+        enabled: false
+      predictor:
+        device: auto
+        input_clip: 8.0
+        data_flow_mode: shared_augmented_source
+        encoder:
+          hidden_dims:
+          - 32
+          latent_dim: 16
+          chebyshev_degree: 2
+          chebyshev_input_scale: 6.0
+          chebyshev_scale: 0.1
+          base_scale: 1.0
+          dropout: 0.0
+        jepa_predictor:
+          hidden_dims:
+          - 32
+          mask_embedding_dim: 8
+          dropout: 0.0
+        classifier:
+          context_size: 8
+          hidden_dim: 32
+          hidden_multiplier: 2.0
+          encoder_blocks: 1
+          predictor_blocks: 1
+          context_dropout: 0.0
+          dropout: 0.0
+          candidate_batch_size: 256
+        views:
+          minimum_mask_ratio: 0.2
+          maximum_mask_ratio: 0.5
+          target_noise_std: 0.01
+          consistency_noise_std: 0.02
+        losses:
+          jepa: 1.0
+          classification: 1.0
+          alignment: 0.1
+          consistency: 0.1
+          variance: 0.05
+          covariance: 0.01
+        optimization:
+          pretrain_epochs: 1
+          joint_epochs: 2
+          batch_size: 256
+          learning_rate: 0.001
+          weight_decay: 1.0e-05
+          ema_momentum: 0.99
+          early_stopping_patience: 1
+          gradient_clip_norm: 1.0
+          source_weight_temperature: 1.0
+          source_weight_update_interval: 1
+          use_amp: true
+          refit_all_sources: true
+          log_every_epochs: 1
+    ipgdo_transformer_jepa:
+      oversampling:
+        device: auto
+        target_minority_ratio: 1.0
+        role:
+          max_components: 4
+          l1_c: 0.2
+          minimum_component_weight: 0.01
+        formula:
+          l1_c: 0.1
+          max_terms: 10
+          minimum_reliability: 0.0
+          use_reliability_weighting: false
+          project_blend_strength: 50.0
+          minimum_class_samples: 4
+        diffusion:
+          hidden_dim: 64
+          residual_blocks: 2
+          dropout: 0.0
+          timesteps: 12
+          schedule: cosine
+          epochs: 2
+          batch_size: 256
+          learning_rate: 0.001
+          weight_decay: 1.0e-05
+          gradient_clip_norm: 1.0
+          sample_batch_size: 128
+          use_amp: true
+          normalized_clip: 8.0
+          physics_warmup_fraction: 0.2
+          formula_consistency_weight: 0.0
+          formula_semantic_weight: 0.05
+      oversampling_reuse:
+        enabled: false
+      predictor:
+        device: auto
+        input_clip: 8.0
+        encoder:
+          model_dim: 16
+          latent_dim: 16
+          num_heads: 4
+          num_layers: 1
+          feedforward_dim: 32
+          dropout: 0.0
+          activation: gelu
+        jepa_predictor:
+          model_dim: 16
+          num_heads: 4
+          num_layers: 1
+          feedforward_dim: 32
+          dropout: 0.0
+          activation: gelu
+        views:
+          minimum_mask_ratio: 0.2
+          maximum_mask_ratio: 0.5
+          target_noise_std: 0.01
+          consistency_noise_std: 0.02
+        losses:
+          jepa: 1.0
+          classification: 1.0
+          alignment: 0.1
+          consistency: 0.1
+          variance: 0.05
+          covariance: 0.01
+        optimization:
+          pretrain_epochs: 1
+          joint_epochs: 2
+          batch_size: 256
+          learning_rate: 0.001
+          weight_decay: 1.0e-05
+          ema_momentum: 0.99
+          early_stopping_patience: 1
+          gradient_clip_norm: 1.0
+          source_weight_temperature: 1.0
+          source_weight_update_interval: 1
+          use_amp: true
+          refit_all_sources: true
+          log_every_epochs: 1

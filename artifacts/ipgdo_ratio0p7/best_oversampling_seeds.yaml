@@ -1,0 +1,866 @@
+schema_version: 1
+selection_protocol: source-training-final-batch-loss
+target_labels_used: false
+method: ipgdo_kan_jepa
+profile: full
+candidate_seeds:
+- 2026072201
+- 2026072202
+- 2026072203
+- 2026072204
+- 2026072205
+- 2026072206
+- 2026072207
+- 2026072208
+- 2026072209
+- 2026072210
+- 2026072211
+- 2026072212
+- 2026072213
+- 2026072214
+- 2026072215
+- 2026072216
+- 2026072217
+- 2026072218
+- 2026072219
+- 2026072220
+- 2026072221
+- 2026072222
+- 2026072223
+- 2026072224
+- 2026072225
+- 2026072226
+- 2026072227
+- 2026072228
+- 2026072229
+- 2026072230
+- 2026072231
+- 2026072232
+- 2026072233
+- 2026072234
+- 2026072235
+- 2026072236
+- 2026072237
+- 2026072238
+- 2026072239
+- 2026072240
+- 2026072241
+- 2026072242
+- 2026072243
+- 2026072244
+- 2026072245
+- 2026072246
+- 2026072247
+- 2026072248
+- 2026072249
+- 2026072250
+- 2026072251
+- 2026072252
+- 2026072253
+- 2026072254
+- 2026072255
+- 2026072256
+- 2026072257
+- 2026072258
+- 2026072259
+- 2026072260
+- 2026072261
+- 2026072262
+- 2026072263
+- 2026072264
+- 2026072265
+- 2026072266
+- 2026072267
+- 2026072268
+- 2026072269
+- 2026072270
+- 2026072271
+- 2026072272
+- 2026072273
+- 2026072274
+- 2026072275
+- 2026072276
+- 2026072277
+- 2026072278
+- 2026072279
+- 2026072280
+- 2026072281
+- 2026072282
+- 2026072283
+- 2026072284
+- 2026072285
+- 2026072286
+- 2026072287
+- 2026072288
+- 2026072289
+- 2026072290
+- 2026072291
+- 2026072292
+- 2026072293
+- 2026072294
+- 2026072295
+- 2026072296
+- 2026072297
+- 2026072298
+- 2026072299
+- 2026072300
+final_batch_count: 10
+score_field: total_loss
+experiment_config: /mnt/proj/IPGDO_NetworkCapacity_Linux_Package_20260809/configs/experiment_loss_epochs500_lr001.yaml
+updated_at: '2026-08-31T02:14:32.935802+00:00'
+targets:
+  AEEEM/EQ:
+    best_seed: 2026072263
+    ranking_file: summary/AEEEM__EQ/candidate_loss_rankings.csv
+    source_projects:
+    - AEEEM/JDT
+    - AEEEM/LC
+    - AEEEM/ML
+    - AEEEM/PDE
+    source_data_signature: 8faf9e7b8c30e6c28ddae4ea16d5cf157d22c81527e31c433c1d1d43d33c3dcb
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: AEEEM/EQ
+      candidate_seed: 2026072263
+      tail_total_loss_mean: 0.23992972522974015
+      tail_total_loss_std: 0.01775337358148722
+      tail_noise_loss_mean: 0.2239782229065895
+      tail_physics_loss_mean: 0.015951504185795783
+      tail_consistency_loss_mean: 0.026238229125738144
+      tail_semantic_loss_mean: 0.3190300792455673
+      final_batch_count: 10
+      final_global_batch_start: 1491
+      final_global_batch_end: 1500
+      duration_seconds: 29.70752114057541
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/AEEEM__EQ/seed_2026072263.npz
+  AEEEM/JDT:
+    best_seed: 2026072272
+    ranking_file: summary/AEEEM__JDT/candidate_loss_rankings.csv
+    source_projects:
+    - AEEEM/EQ
+    - AEEEM/LC
+    - AEEEM/ML
+    - AEEEM/PDE
+    source_data_signature: 2dcb5a1256f11a325569d85e4bba1651b30f049508be626b0e037bd886d609b1
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: AEEEM/JDT
+      candidate_seed: 2026072272
+      tail_total_loss_mean: 0.2278686285018921
+      tail_total_loss_std: 0.015287350349004648
+      tail_noise_loss_mean: 0.2096319690346718
+      tail_physics_loss_mean: 0.018236660026013853
+      tail_consistency_loss_mean: 0.0227199774235487
+      tail_semantic_loss_mean: 0.3647331953048706
+      final_batch_count: 10
+      final_global_batch_start: 1491
+      final_global_batch_end: 1500
+      duration_seconds: 30.67245834879577
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/AEEEM__JDT/seed_2026072272.npz
+  AEEEM/LC:
+    best_seed: 2026072255
+    ranking_file: summary/AEEEM__LC/candidate_loss_rankings.csv
+    source_projects:
+    - AEEEM/EQ
+    - AEEEM/JDT
+    - AEEEM/ML
+    - AEEEM/PDE
+    source_data_signature: 323468240eab5627ee5d7f644e28d5985f265aeed81fdcab2b6a26bb473a93f9
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: AEEEM/LC
+      candidate_seed: 2026072255
+      tail_total_loss_mean: 0.26130538135766984
+      tail_total_loss_std: 0.05828243949848469
+      tail_noise_loss_mean: 0.24392311424016952
+      tail_physics_loss_mean: 0.01738227214664221
+      tail_consistency_loss_mean: 0.029092701524496077
+      tail_semantic_loss_mean: 0.3476454377174377
+      final_batch_count: 10
+      final_global_batch_start: 1991
+      final_global_batch_end: 2000
+      duration_seconds: 39.84090675599873
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/AEEEM__LC/seed_2026072255.npz
+  AEEEM/ML:
+    best_seed: 2026072299
+    ranking_file: summary/AEEEM__ML/candidate_loss_rankings.csv
+    source_projects:
+    - AEEEM/EQ
+    - AEEEM/JDT
+    - AEEEM/LC
+    - AEEEM/PDE
+    source_data_signature: 2a1d3a5f03a7280a1d8d41f616899dd02054076580dc67ad8ff3b7e230b0fe06
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: AEEEM/ML
+      candidate_seed: 2026072299
+      tail_total_loss_mean: 0.2428593799471855
+      tail_total_loss_std: 0.020342682995462193
+      tail_noise_loss_mean: 0.22724136114120483
+      tail_physics_loss_mean: 0.015618014708161354
+      tail_consistency_loss_mean: 0.02928648702800274
+      tail_semantic_loss_mean: 0.3123602867126465
+      final_batch_count: 10
+      final_global_batch_start: 1491
+      final_global_batch_end: 1500
+      duration_seconds: 30.73664891719818
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/AEEEM__ML/seed_2026072299.npz
+  AEEEM/PDE:
+    best_seed: 2026072217
+    ranking_file: summary/AEEEM__PDE/candidate_loss_rankings.csv
+    source_projects:
+    - AEEEM/EQ
+    - AEEEM/JDT
+    - AEEEM/LC
+    - AEEEM/ML
+    source_data_signature: fadc794f7d121919beed836d797f1eb735bb4eb3b09c85057b1ebac229a66ae1
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: AEEEM/PDE
+      candidate_seed: 2026072217
+      tail_total_loss_mean: 0.23813241869211196
+      tail_total_loss_std: 0.014384601053934087
+      tail_noise_loss_mean: 0.22279730439186096
+      tail_physics_loss_mean: 0.015335113275796175
+      tail_consistency_loss_mean: 0.028435531817376614
+      tail_semantic_loss_mean: 0.3067022621631622
+      final_batch_count: 10
+      final_global_batch_start: 1491
+      final_global_batch_end: 1500
+      duration_seconds: 30.488773066550493
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/AEEEM__PDE/seed_2026072217.npz
+  NASA/CM1:
+    best_seed: 2026072210
+    ranking_file: summary/NASA__CM1/candidate_loss_rankings.csv
+    source_projects:
+    - NASA/MW1
+    - NASA/PC1
+    - NASA/PC3
+    - NASA/PC4
+    source_data_signature: a1829608aec978c7d5bd62dc9ed7512916b6e0624a937ccd3f0fe5d555e28e36
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: NASA/CM1
+      candidate_seed: 2026072210
+      tail_total_loss_mean: 0.19110764116048812
+      tail_total_loss_std: 0.011046062573189427
+      tail_noise_loss_mean: 0.1803851157426834
+      tail_physics_loss_mean: 0.010722523741424083
+      tail_consistency_loss_mean: 0.04123454615473747
+      tail_semantic_loss_mean: 0.21445047110319138
+      final_batch_count: 10
+      final_global_batch_start: 991
+      final_global_batch_end: 1000
+      duration_seconds: 23.60424949415028
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/NASA__CM1/seed_2026072210.npz
+  NASA/MW1:
+    best_seed: 2026072254
+    ranking_file: summary/NASA__MW1/candidate_loss_rankings.csv
+    source_projects:
+    - NASA/CM1
+    - NASA/PC1
+    - NASA/PC3
+    - NASA/PC4
+    source_data_signature: a5ebf0a4a6a99870103ab5d99d8d9e41ab4859e5a5d82fa25abb34c123b44ee8
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: NASA/MW1
+      candidate_seed: 2026072254
+      tail_total_loss_mean: 0.18990817815065383
+      tail_total_loss_std: 0.010852501967970371
+      tail_noise_loss_mean: 0.17844076156616212
+      tail_physics_loss_mean: 0.011467414069920778
+      tail_consistency_loss_mean: 0.038095817901194096
+      tail_semantic_loss_mean: 0.22934827953577042
+      final_batch_count: 10
+      final_global_batch_start: 991
+      final_global_batch_end: 1000
+      duration_seconds: 22.601547464728355
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/NASA__MW1/seed_2026072254.npz
+  NASA/PC1:
+    best_seed: 2026072230
+    ranking_file: summary/NASA__PC1/candidate_loss_rankings.csv
+    source_projects:
+    - NASA/CM1
+    - NASA/MW1
+    - NASA/PC3
+    - NASA/PC4
+    source_data_signature: 1238be6db46df95fce42fb02438348caaa468f9f7a3e4f5a7a94396c87d3daa2
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: NASA/PC1
+      candidate_seed: 2026072230
+      tail_total_loss_mean: 0.18880651742219925
+      tail_total_loss_std: 0.014800393312614415
+      tail_noise_loss_mean: 0.17606301307678224
+      tail_physics_loss_mean: 0.012743506301194429
+      tail_consistency_loss_mean: 0.033863688819110394
+      tail_semantic_loss_mean: 0.2548701211810112
+      final_batch_count: 10
+      final_global_batch_start: 991
+      final_global_batch_end: 1000
+      duration_seconds: 22.22761713899672
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/NASA__PC1/seed_2026072230.npz
+  NASA/PC3:
+    best_seed: 2026072256
+    ranking_file: summary/NASA__PC3/candidate_loss_rankings.csv
+    source_projects:
+    - NASA/CM1
+    - NASA/MW1
+    - NASA/PC1
+    - NASA/PC4
+    source_data_signature: f70ea3e8140f6bd95486c11bdfb58b68c20ab695bf1cdc3c72525a4bc320dea0
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: NASA/PC3
+      candidate_seed: 2026072256
+      tail_total_loss_mean: 0.18721040934324265
+      tail_total_loss_std: 0.015118037751696095
+      tail_noise_loss_mean: 0.17553215324878693
+      tail_physics_loss_mean: 0.011678258469328285
+      tail_consistency_loss_mean: 0.042844869568943976
+      tail_semantic_loss_mean: 0.23356516659259796
+      final_batch_count: 10
+      final_global_batch_start: 991
+      final_global_batch_end: 1000
+      duration_seconds: 22.743033031001687
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/NASA__PC3/seed_2026072256.npz
+  NASA/PC4:
+    best_seed: 2026072281
+    ranking_file: summary/NASA__PC4/candidate_loss_rankings.csv
+    source_projects:
+    - NASA/CM1
+    - NASA/MW1
+    - NASA/PC1
+    - NASA/PC3
+    source_data_signature: c6769aaa8e4b914d7203a33e05e22fa2aeaae5612d9f680f46408ab41dc4513b
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: NASA/PC4
+      candidate_seed: 2026072281
+      tail_total_loss_mean: 0.21174698397517205
+      tail_total_loss_std: 0.06441365644513922
+      tail_noise_loss_mean: 0.199934234470129
+      tail_physics_loss_mean: 0.011812752392143012
+      tail_consistency_loss_mean: 0.04310948122292757
+      tail_semantic_loss_mean: 0.23625504076480866
+      final_batch_count: 10
+      final_global_batch_start: 991
+      final_global_batch_end: 1000
+      duration_seconds: 22.375549536198378
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/NASA__PC4/seed_2026072281.npz
+  PROMISE/ant-1.7:
+    best_seed: 2026072250
+    ranking_file: summary/PROMISE__ant-1.7/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: fddd255a990fced31d9d70f11f6dacd33180303437ba33306ce1eb1f2d45caf0
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/ant-1.7
+      candidate_seed: 2026072250
+      tail_total_loss_mean: 0.2552948072552681
+      tail_total_loss_std: 0.016818952765171497
+      tail_noise_loss_mean: 0.23908089250326156
+      tail_physics_loss_mean: 0.01621392127126455
+      tail_consistency_loss_mean: 0.025438078679144382
+      tail_semantic_loss_mean: 0.3242784202098846
+      final_batch_count: 10
+      final_global_batch_start: 2491
+      final_global_batch_end: 2500
+      duration_seconds: 46.541256396099925
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__ant-1.7/seed_2026072250.npz
+  PROMISE/camel-1.6:
+    best_seed: 2026072250
+    ranking_file: summary/PROMISE__camel-1.6/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: e22ed3767600146087c9790b88191521221bfaccf3d57945ebc0d19225e17f62
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/camel-1.6
+      candidate_seed: 2026072250
+      tail_total_loss_mean: 0.2558669537305832
+      tail_total_loss_std: 0.01796768969322317
+      tail_noise_loss_mean: 0.2403673216700554
+      tail_physics_loss_mean: 0.015499634388834237
+      tail_consistency_loss_mean: 0.024353505857288838
+      tail_semantic_loss_mean: 0.30999267995357516
+      final_batch_count: 10
+      final_global_batch_start: 2491
+      final_global_batch_end: 2500
+      duration_seconds: 46.11056223884225
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__camel-1.6/seed_2026072250.npz
+  PROMISE/ivy-2.0:
+    best_seed: 2026072275
+    ranking_file: summary/PROMISE__ivy-2.0/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: a514b9dba74dbbc26db446a704d68d84f2602d9cb351d3a1f49ef658b4403a3e
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/ivy-2.0
+      candidate_seed: 2026072275
+      tail_total_loss_mean: 0.2602446511387825
+      tail_total_loss_std: 0.02724384609609533
+      tail_noise_loss_mean: 0.24442944824695587
+      tail_physics_loss_mean: 0.015815201960504056
+      tail_consistency_loss_mean: 0.026310120336711408
+      tail_semantic_loss_mean: 0.31630403101444243
+      final_batch_count: 10
+      final_global_batch_start: 2991
+      final_global_batch_end: 3000
+      duration_seconds: 55.807306591421366
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__ivy-2.0/seed_2026072275.npz
+  PROMISE/jedit-4.0:
+    best_seed: 2026072291
+    ranking_file: summary/PROMISE__jedit-4.0/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: e05d7795470936a5697db93505b782368d569d62ed61aa39d1294c16801466e1
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/jedit-4.0
+      candidate_seed: 2026072291
+      tail_total_loss_mean: 0.26368807405233385
+      tail_total_loss_std: 0.06424387173870087
+      tail_noise_loss_mean: 0.24745206907391548
+      tail_physics_loss_mean: 0.01623600283637643
+      tail_consistency_loss_mean: 0.02982219960540533
+      tail_semantic_loss_mean: 0.3247200518846512
+      final_batch_count: 10
+      final_global_batch_start: 2991
+      final_global_batch_end: 3000
+      duration_seconds: 54.40119794756174
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__jedit-4.0/seed_2026072291.npz
+  PROMISE/log4j-1.0:
+    best_seed: 2026072275
+    ranking_file: summary/PROMISE__log4j-1.0/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: 7a1362b34a1840ba90f7c96d8a5f734288b2c94de5b86d2f582040da672a9e52
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/log4j-1.0
+      candidate_seed: 2026072275
+      tail_total_loss_mean: 0.2506267219781876
+      tail_total_loss_std: 0.022766696636049556
+      tail_noise_loss_mean: 0.23457845002412797
+      tail_physics_loss_mean: 0.016048272047191857
+      tail_consistency_loss_mean: 0.02652247976511717
+      tail_semantic_loss_mean: 0.32096543312072756
+      final_batch_count: 10
+      final_global_batch_start: 2991
+      final_global_batch_end: 3000
+      duration_seconds: 55.45091134123504
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__log4j-1.0/seed_2026072275.npz
+  PROMISE/lucene-2.4:
+    best_seed: 2026072288
+    ranking_file: summary/PROMISE__lucene-2.4/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: 760322e8898c70f4a64e1585f33c53cd9120973c9dfb5d2767cbebf8a0f9c839
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/lucene-2.4
+      candidate_seed: 2026072288
+      tail_total_loss_mean: 0.2579063430428505
+      tail_total_loss_std: 0.014657502798740405
+      tail_noise_loss_mean: 0.24233301132917404
+      tail_physics_loss_mean: 0.01557333506643772
+      tail_consistency_loss_mean: 0.02581558730453253
+      tail_semantic_loss_mean: 0.31146669387817383
+      final_batch_count: 10
+      final_global_batch_start: 2491
+      final_global_batch_end: 2500
+      duration_seconds: 46.13834856450558
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__lucene-2.4/seed_2026072288.npz
+  PROMISE/poi-3.0:
+    best_seed: 2026072292
+    ranking_file: summary/PROMISE__poi-3.0/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: 8182f4b9c14670615c82f379e81c319b25c0565347f825134b693246e1902248
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/poi-3.0
+      candidate_seed: 2026072292
+      tail_total_loss_mean: 0.26135900169610976
+      tail_total_loss_std: 0.016941783958202353
+      tail_noise_loss_mean: 0.2452221155166626
+      tail_physics_loss_mean: 0.016136890091001988
+      tail_consistency_loss_mean: 0.027764927968382834
+      tail_semantic_loss_mean: 0.3227377951145172
+      final_batch_count: 10
+      final_global_batch_start: 2491
+      final_global_batch_end: 2500
+      duration_seconds: 47.01678407564759
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__poi-3.0/seed_2026072292.npz
+  PROMISE/synapse-1.2:
+    best_seed: 2026072275
+    ranking_file: summary/PROMISE__synapse-1.2/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: aa836d6df7fa8b059bd585750544fdaf01b0a2b31db32cd075cce3bfa238d744
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/synapse-1.2
+      candidate_seed: 2026072275
+      tail_total_loss_mean: 0.2571967825293541
+      tail_total_loss_std: 0.012154881209825425
+      tail_noise_loss_mean: 0.24152773767709732
+      tail_physics_loss_mean: 0.015669043641537428
+      tail_consistency_loss_mean: 0.026980571262538434
+      tail_semantic_loss_mean: 0.3133808672428131
+      final_batch_count: 10
+      final_global_batch_start: 2491
+      final_global_batch_end: 2500
+      duration_seconds: 46.41763259097934
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__synapse-1.2/seed_2026072275.npz
+  PROMISE/tomcat:
+    best_seed: 2026072275
+    ranking_file: summary/PROMISE__tomcat/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: 7e1a1bc51c5e4941cca05ea2d86742e8643712ef1d46b5df2b4657699b940d8c
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/tomcat
+      candidate_seed: 2026072275
+      tail_total_loss_mean: 0.27027790546417235
+      tail_total_loss_std: 0.0311899578518118
+      tail_noise_loss_mean: 0.2549148991703987
+      tail_physics_loss_mean: 0.01536300741136074
+      tail_consistency_loss_mean: 0.030616050027310847
+      tail_semantic_loss_mean: 0.30726014375686644
+      final_batch_count: 10
+      final_global_batch_start: 2991
+      final_global_batch_end: 3000
+      duration_seconds: 53.79891105182469
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__tomcat/seed_2026072275.npz
+  PROMISE/velocity-1.6:
+    best_seed: 2026072291
+    ranking_file: summary/PROMISE__velocity-1.6/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/xalan-2.4
+    - PROMISE/xerces-1.3
+    source_data_signature: b8b441f3a76b403fc19838210723c1e180fd087e1316fbf1a6f2621678a72c7d
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/velocity-1.6
+      candidate_seed: 2026072291
+      tail_total_loss_mean: 0.27071884274482727
+      tail_total_loss_std: 0.05968087053586169
+      tail_noise_loss_mean: 0.255364254117012
+      tail_physics_loss_mean: 0.015354592632502318
+      tail_consistency_loss_mean: 0.028611536137759686
+      tail_semantic_loss_mean: 0.30709185004234313
+      final_batch_count: 10
+      final_global_batch_start: 2991
+      final_global_batch_end: 3000
+      duration_seconds: 55.504139330238104
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__velocity-1.6/seed_2026072291.npz
+  PROMISE/xalan-2.4:
+    best_seed: 2026072254
+    ranking_file: summary/PROMISE__xalan-2.4/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xerces-1.3
+    source_data_signature: 762760d95aea24fbea0a3da27d5e3986d0ecebd4b70483895386b061375ca876
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/xalan-2.4
+      candidate_seed: 2026072254
+      tail_total_loss_mean: 0.26055712401866915
+      tail_total_loss_std: 0.014356956191075385
+      tail_noise_loss_mean: 0.24461540132761
+      tail_physics_loss_mean: 0.015941728930920364
+      tail_consistency_loss_mean: 0.026119691878557207
+      tail_semantic_loss_mean: 0.3188345730304718
+      final_batch_count: 10
+      final_global_batch_start: 2491
+      final_global_batch_end: 2500
+      duration_seconds: 46.131454192101955
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__xalan-2.4/seed_2026072254.npz
+  PROMISE/xerces-1.3:
+    best_seed: 2026072294
+    ranking_file: summary/PROMISE__xerces-1.3/candidate_loss_rankings.csv
+    source_projects:
+    - PROMISE/ant-1.7
+    - PROMISE/camel-1.6
+    - PROMISE/ivy-2.0
+    - PROMISE/jedit-4.0
+    - PROMISE/log4j-1.0
+    - PROMISE/lucene-2.4
+    - PROMISE/poi-3.0
+    - PROMISE/synapse-1.2
+    - PROMISE/tomcat
+    - PROMISE/velocity-1.6
+    - PROMISE/xalan-2.4
+    source_data_signature: 2610144a896f9e51b4d75b7685a381e2958fdfc9692197889da813154eff422a
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: PROMISE/xerces-1.3
+      candidate_seed: 2026072294
+      tail_total_loss_mean: 0.2675416335463524
+      tail_total_loss_std: 0.04039805405720546
+      tail_noise_loss_mean: 0.25156686156988145
+      tail_physics_loss_mean: 0.01597477337345481
+      tail_consistency_loss_mean: 0.02603581063449383
+      tail_semantic_loss_mean: 0.3194954678416252
+      final_batch_count: 10
+      final_global_batch_start: 2991
+      final_global_batch_end: 3000
+      duration_seconds: 53.58817691169679
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/PROMISE__xerces-1.3/seed_2026072294.npz
+  ReLink/Apache:
+    best_seed: 2026072294
+    ranking_file: summary/ReLink__Apache/candidate_loss_rankings.csv
+    source_projects:
+    - ReLink/Safe
+    - ReLink/Zxing
+    source_data_signature: 07aad871c7d28d1efd074137470c5f8926ebd161f71110c685b8ae124ce3a49a
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: ReLink/Apache
+      candidate_seed: 2026072294
+      tail_total_loss_mean: 0.1862290009856224
+      tail_total_loss_std: 0.018369489081502557
+      tail_noise_loss_mean: 0.1662997841835022
+      tail_physics_loss_mean: 0.019929216429591178
+      tail_consistency_loss_mean: 0.017746482975780964
+      tail_semantic_loss_mean: 0.3985843151807785
+      final_batch_count: 10
+      final_global_batch_start: 491
+      final_global_batch_end: 500
+      duration_seconds: 8.978945665061474
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/ReLink__Apache/seed_2026072294.npz
+  ReLink/Safe:
+    best_seed: 2026072239
+    ranking_file: summary/ReLink__Safe/candidate_loss_rankings.csv
+    source_projects:
+    - ReLink/Apache
+    - ReLink/Zxing
+    source_data_signature: dcb557956e6d9efeb983bedb531fe826924d7bf9d5d4055aff5f5688a608b2ea
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: ReLink/Safe
+      candidate_seed: 2026072239
+      tail_total_loss_mean: 0.19639486819505692
+      tail_total_loss_std: 0.011637481902495351
+      tail_noise_loss_mean: 0.17999341040849687
+      tail_physics_loss_mean: 0.016401459556072952
+      tail_consistency_loss_mean: 0.029405626840889453
+      tail_semantic_loss_mean: 0.32802918553352356
+      final_batch_count: 10
+      final_global_batch_start: 491
+      final_global_batch_end: 500
+      duration_seconds: 9.324036525562406
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/ReLink__Safe/seed_2026072239.npz
+  ReLink/Zxing:
+    best_seed: 2026072294
+    ranking_file: summary/ReLink__Zxing/candidate_loss_rankings.csv
+    source_projects:
+    - ReLink/Apache
+    - ReLink/Safe
+    source_data_signature: 4aadba76f1b796bf3c2c2fdfd469953e9d6edeaba89ebe2990c98007290b7f2f
+    search_signature: b7d1ad0b25186e278b46bd9808394b98de074aef255f65903968eec06522b989
+    selection:
+      target: ReLink/Zxing
+      candidate_seed: 2026072294
+      tail_total_loss_mean: 0.18114097714424132
+      tail_total_loss_std: 0.011840992706990464
+      tail_noise_loss_mean: 0.16480810940265656
+      tail_physics_loss_mean: 0.01633286662399769
+      tail_consistency_loss_mean: 0.0216224892064929
+      tail_semantic_loss_mean: 0.32665732502937317
+      final_batch_count: 10
+      final_global_batch_start: 491
+      final_global_batch_end: 500
+      duration_seconds: 9.284091282635927
+      device: cuda
+      amp_enabled: true
+      selection_position: 1
+    cache_file: cache/ReLink__Zxing/seed_2026072294.npz
+target_minority_ratio: 0.7
+cache_signature: cae5b4c6a5c16135b28cde8abcd3d6c46ee0c97dfba4763bc57226a62f5692f8

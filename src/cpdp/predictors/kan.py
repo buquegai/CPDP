@@ -18,26 +18,30 @@ def _positive_int_tuple(values, name: str) -> Tuple[int, ...]:
 class KANEncoderConfig:
     hidden_dims: Tuple[int, ...] = (128, 64)
     latent_dim: int = 64
-    grid_size: int = 5
-    spline_order: int = 3
-    grid_range: Tuple[float, float] = (-6.0, 6.0)
+    chebyshev_degree: int = 3
+    chebyshev_input_scale: float = 6.0
+    chebyshev_scale: float = 0.1
     base_scale: float = 1.0
-    spline_scale: float = 0.1
     dropout: float = 0.1
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, Any]) -> "KANEncoderConfig":
-        grid_range = tuple(float(value) for value in values.get("grid_range", (-6.0, 6.0)))
+        # Historical snapshots are accepted as one-way aliases; construction is Chebyshev-only.
+        degree = values.get("chebyshev_degree", values.get("spline_order", 3))
+        input_scale = values.get("chebyshev_input_scale")
+        if input_scale is None:
+            legacy_range = values.get("grid_range", (-6.0, 6.0))
+            input_scale = max(abs(float(value)) for value in legacy_range)
+        polynomial_scale = values.get("chebyshev_scale", values.get("spline_scale", 0.1))
         config = cls(
             hidden_dims=_positive_int_tuple(
                 values.get("hidden_dims", (128, 64)), "encoder.hidden_dims"
             ),
             latent_dim=int(values.get("latent_dim", 64)),
-            grid_size=int(values.get("grid_size", 5)),
-            spline_order=int(values.get("spline_order", 3)),
-            grid_range=grid_range,
+            chebyshev_degree=int(degree),
+            chebyshev_input_scale=float(input_scale),
+            chebyshev_scale=float(polynomial_scale),
             base_scale=float(values.get("base_scale", 1.0)),
-            spline_scale=float(values.get("spline_scale", 0.1)),
             dropout=float(values.get("dropout", 0.1)),
         )
         config.validate()
@@ -46,13 +50,11 @@ class KANEncoderConfig:
     def validate(self) -> None:
         if self.latent_dim < 2:
             raise ValueError("encoder.latent_dim must be at least 2")
-        if self.grid_size < 2:
-            raise ValueError("encoder.grid_size must be at least 2")
-        if self.spline_order < 1:
-            raise ValueError("encoder.spline_order must be positive")
-        if len(self.grid_range) != 2 or self.grid_range[0] >= self.grid_range[1]:
-            raise ValueError("encoder.grid_range must contain increasing bounds")
-        if self.base_scale <= 0 or self.spline_scale <= 0:
+        if self.chebyshev_degree < 1:
+            raise ValueError("encoder.chebyshev_degree must be positive")
+        if self.chebyshev_input_scale <= 0:
+            raise ValueError("encoder.chebyshev_input_scale must be positive")
+        if self.base_scale <= 0 or self.chebyshev_scale <= 0:
             raise ValueError("encoder KAN scales must be positive")
         if not 0.0 <= self.dropout <= 1.0:
             raise ValueError("encoder.dropout must be between 0 and 1")
@@ -66,17 +68,6 @@ def build_kan_linear(
 ):
     nn = torch.nn
     functional = torch.nn.functional
-    grid_step = (config.grid_range[1] - config.grid_range[0]) / config.grid_size
-    knots = (
-        torch.arange(
-            -config.spline_order,
-            config.grid_size + config.spline_order + 1,
-            dtype=torch.float32,
-        )
-        * grid_step
-        + config.grid_range[0]
-    )
-
     class KANLinear(nn.Module):
         def __init__(self) -> None:
             super().__init__()
@@ -84,15 +75,14 @@ def build_kan_linear(
             self.output_dim = output_dim
             self.base_weight = nn.Parameter(torch.empty(output_dim, input_dim))
             self.base_bias = nn.Parameter(torch.empty(output_dim))
-            self.spline_weight = nn.Parameter(
+            self.chebyshev_weight = nn.Parameter(
                 torch.empty(
                     output_dim,
                     input_dim,
-                    config.grid_size + config.spline_order,
+                    config.chebyshev_degree + 1,
                 )
             )
-            self.spline_scaler = nn.Parameter(torch.empty(output_dim, input_dim))
-            self.register_buffer("grid", knots.expand(input_dim, -1).contiguous())
+            self.chebyshev_scaler = nn.Parameter(torch.empty(output_dim, input_dim))
             self.reset_parameters()
 
         def reset_parameters(self) -> None:
@@ -102,49 +92,37 @@ def build_kan_linear(
             bound = 1.0 / math.sqrt(fan_in)
             nn.init.uniform_(self.base_bias, -bound, bound)
             nn.init.normal_(
-                self.spline_weight,
+                self.chebyshev_weight,
                 mean=0.0,
-                std=config.spline_scale / max(1, config.grid_size),
+                std=config.chebyshev_scale / math.sqrt(config.chebyshev_degree + 1),
             )
-            nn.init.ones_(self.spline_scaler)
+            nn.init.ones_(self.chebyshev_scaler)
 
-        def b_splines(self, values):
+        def chebyshev_basis(self, values):
             if values.ndim != 2 or values.shape[1] != self.input_dim:
                 raise ValueError(
                     f"KANLinear expected [batch, {self.input_dim}], got {tuple(values.shape)}"
                 )
-            expanded = values.unsqueeze(-1)
-            grid = self.grid.to(dtype=values.dtype)
-            bases = (
-                (expanded >= grid[:, :-1]) & (expanded < grid[:, 1:])
-            ).to(values.dtype)
-            for order in range(1, config.spline_order + 1):
-                left_denominator = grid[:, order:-1] - grid[:, : -(order + 1)]
-                right_denominator = grid[:, order + 1 :] - grid[:, 1:-order]
-                left = (
-                    (expanded - grid[:, : -(order + 1)])
-                    / left_denominator.clamp_min(torch.finfo(values.dtype).eps)
-                    * bases[:, :, :-1]
-                )
-                right = (
-                    (grid[:, order + 1 :] - expanded)
-                    / right_denominator.clamp_min(torch.finfo(values.dtype).eps)
-                    * bases[:, :, 1:]
-                )
-                bases = left + right
-            return bases.contiguous()
+            # Smoothly map values to [-1, 1] before the Chebyshev recurrence.
+            normalized = torch.tanh(values / config.chebyshev_input_scale)
+            bases = [torch.ones_like(normalized)]
+            if config.chebyshev_degree >= 1:
+                bases.append(normalized)
+            for _ in range(2, config.chebyshev_degree + 1):
+                bases.append(2.0 * normalized * bases[-1] - bases[-2])
+            return torch.stack(bases, dim=-1).contiguous()
 
         def forward(self, values):
             base = functional.linear(
                 functional.silu(values), self.base_weight, self.base_bias
             )
-            bases = self.b_splines(values)
-            scaled_splines = self.spline_weight * self.spline_scaler.unsqueeze(-1)
-            spline = functional.linear(
+            bases = self.chebyshev_basis(values)
+            scaled_chebyshev = self.chebyshev_weight * self.chebyshev_scaler.unsqueeze(-1)
+            polynomial = functional.linear(
                 bases.reshape(values.shape[0], -1),
-                scaled_splines.reshape(self.output_dim, -1),
+                scaled_chebyshev.reshape(self.output_dim, -1),
             )
-            return base + spline
+            return base + polynomial
 
     return KANLinear()
 
