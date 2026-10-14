@@ -1,0 +1,173 @@
+schema_version: 1
+data:
+  root: ../data
+  file_suffix: __FedCPDP.csv
+  label_column: defect_label
+  cleaning: master
+  families:
+    NASA:
+      projects:
+      - CM1
+      - MW1
+      - PC1
+      - PC3
+      - PC4
+      effort_column: LOC_TOTAL
+    AEEEM:
+      projects:
+      - EQ
+      - JDT
+      - LC
+      - ML
+      - PDE
+      effort_column: ck_oo_numberOfLinesOfCode
+    ReLink:
+      projects:
+      - Apache
+      - Safe
+      - Zxing
+      effort_column: CountLineCode
+    PROMISE:
+      projects:
+      - ant-1.7
+      - camel-1.6
+      - ivy-2.0
+      - jedit-4.0
+      - log4j-1.0
+      - lucene-2.4
+      - poi-3.0
+      - synapse-1.2
+      - tomcat
+      - velocity-1.6
+      - xalan-2.4
+      - xerces-1.3
+      effort_column: loc
+experiment:
+  protocol: within-family-multisource-transductive-lopo
+  target_labels: evaluation-only
+  repetitions: 1
+  seeds:
+  - 2026072201
+  metrics:
+  - auc
+  - auprc
+  - mcc
+  - f1
+  - gmean
+  - popt20
+  save_predictions: true
+  output_dir: /mnt/proj/IPGDO_NetworkCapacity_Linux_Package_20260809/outputs/server_runs/formal/full/v20_conditional_smoke_17d7bd08c509
+profiles:
+  full:
+    ipgdo_kan_jepa:
+      result_signature: v20_conditional_smoke_17d7bd08c509
+      oversampling:
+        device: auto
+        target_minority_ratio: 0.7
+        role:
+          max_components: 4
+          l1_c: 0.2
+          minimum_component_weight: 0.01
+        formula:
+          l1_c: 0.1
+          max_terms: 10
+          minimum_reliability: 0.0
+          use_reliability_weighting: false
+          project_blend_strength: 50.0
+          minimum_class_samples: 4
+        diffusion:
+          hidden_dim: 256
+          residual_blocks: 4
+          dropout: 0.1
+          timesteps: 200
+          schedule: cosine
+          epochs: 500
+          batch_size: 256
+          learning_rate: 0.001
+          weight_decay: 1.0e-05
+          gradient_clip_norm: 1.0
+          sample_batch_size: 1024
+          use_amp: true
+          normalized_clip: 8.0
+          physics_warmup_fraction: 0.2
+          formula_consistency_weight: 0.0
+          formula_semantic_weight: 0.05
+      oversampling_reuse:
+        enabled: true
+        seed_map: artifacts/ipgdo_ratio0p7/best_oversampling_seeds.yaml
+      predictor:
+        device: auto
+        input_clip: 8.0
+        data_flow_mode: shared_augmented_source
+        encoder:
+          hidden_dims:
+          - 128
+          - 64
+          latent_dim: 64
+          chebyshev_degree: 4
+          chebyshev_input_scale: 6.0
+          chebyshev_scale: 0.1
+          base_scale: 1.0
+          dropout: 0.1
+        jepa_predictor:
+          hidden_dims:
+          - 128
+          mask_embedding_dim: 32
+          dropout: 0.1
+        classifier:
+          context_size: 32
+          hidden_dim: 128
+          hidden_multiplier: 2.0
+          encoder_blocks: 1
+          predictor_blocks: 1
+          context_dropout: 0.1
+          dropout: 0.1
+          candidate_batch_size: 1024
+        views:
+          minimum_mask_ratio: 0.2
+          maximum_mask_ratio: 0.5
+          target_noise_std: 0.01
+          consistency_noise_std: 0.02
+        losses:
+          jepa: 1.0
+          classification: 1.0
+          alignment: 0.1
+          consistency: 0.1
+          variance: 0.05
+          covariance: 0.01
+        optimization:
+          pretrain_epochs: 1
+          joint_epochs: 2
+          batch_size: 256
+          learning_rate: 0.0001
+          learning_rate_schedule: warmup_cosine
+          learning_rate_warmup_start: 2.0e-05
+          learning_rate_peak: 0.00015
+          learning_rate_min: 1.0e-05
+          learning_rate_warmup_fraction: 0.1
+          learning_rate_decay_epochs: 50
+          weight_decay: 1.0e-05
+          ema_momentum: 0.996
+          early_stopping_patience: 1
+          gradient_clip_norm: 1.0
+          source_weight_temperature: 1.0
+          source_weight_update_interval: 5
+          use_amp: true
+          refit_all_sources: false
+          log_every_epochs: 10
+        threshold_policy: gmean
+        probability_calibration: none
+        conditional_alignment:
+          confidence: 0.9
+          warmup_epochs: 0
+          ramp_epochs: 1
+          teacher_epoch_momentum: 0.9
+          noise_std: 0.02
+      multisource:
+        implementation_signature: 17d7bd08c509e80491fe7d5bcdf3c12d70527989d332915f747a584d9cafe46c
+        artifact_dir: /mnt/proj/IPGDO_NetworkCapacity_Linux_Package_20260809/outputs/server_runs/formal/full/v20_conditional_smoke_17d7bd08c509/artifacts
+        fold_policy: leave-each-source-project-out
+        aggregation: equal_mean_of_threshold_centered_scores
+        augmentation_reuse:
+          artifact_dir: /mnt/proj/IPGDO_NetworkCapacity_Linux_Package_20260809/outputs/server_runs/formal/full/v18_multisource_dc9821cf4e36/artifacts
+          implementation_signature: dc9821cf4e36232be07f4b64518acde48f5dee54e6aacf987ca2c92f2e043d22
